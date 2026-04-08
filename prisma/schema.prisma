@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// NextAuth models
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -35,15 +34,15 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  githubUsername String?
-  accounts      Account[]
-  sessions      Session[]
-  comments      Comment[]
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  githubUsername  String?
+  accounts       Account[]
+  sessions       Session[]
+  comments       Comment[]
 }
 
 model VerificationToken {
@@ -54,13 +53,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Blog models
 model BlogPost {
   id          String    @id @default(cuid())
   slug        String    @unique
   title       String
   description String?
-  githubPath  String    // path in github repo
+  githubPath  String
   views       Int       @default(0)
   shares      Int       @default(0)
   published   Boolean   @default(false)
@@ -72,35 +70,49 @@ model BlogPost {
 model Comment {
   id        String   @id @default(cuid())
   content   String   @db.Text
+  imageUrl  String?
   postId    String
   userId    String
+  parentId  String?
+  replyToId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
 }
 
 model Project {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   description String?
   url         String?
   logoUrl     String?
-  sortOrder   Int     @default(0)
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model AboutPage {
-  id      String @id @default(cuid())
-  content String @db.Text // JSON blob with about info
+  id        String   @id @default(cuid())
+  locale    String   @default("zh")
+  content   String   @db.Text
   updatedAt DateTime @updatedAt
+
+  @@unique([locale])
+}
+
+model SiteConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String @db.Text
 }
 
 model NotifyConfig {
-  id        String @id @default(cuid())
-  type      String // "webhook" or "email"
-  config    String @db.Text // JSON config
+  id        String  @id @default(cuid())
+  type      String
+  config    String  @db.Text
   enabled   Boolean @default(true)
   updatedAt DateTime @updatedAt
 }

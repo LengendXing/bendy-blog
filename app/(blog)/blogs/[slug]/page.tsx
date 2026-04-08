@@ -6,9 +6,15 @@ import { BlogContent } from "./blog-content"
 export const revalidate = 60
 
 export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+  const slug = decodeURIComponent(params.slug)
   const post = await prisma.blogPost.findUnique({
-    where: { slug: params.slug },
-    include: { comments: { include: { user: true }, orderBy: { createdAt: "desc" } } },
+    where: { slug },
+    include: {
+      comments: {
+        include: { user: { select: { name: true, image: true, githubUsername: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
   })
   if (!post || !post.published) notFound()
 
@@ -16,5 +22,11 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   const file = await getFileContent(post.githubPath)
   if (file) markdown = file.content
 
-  return <BlogContent post={post} markdown={markdown} />
+  const serialized = post.comments.map(c => ({
+    ...c,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
+  }))
+
+  return <BlogContent post={post} markdown={markdown} initialComments={serialized} />
 }

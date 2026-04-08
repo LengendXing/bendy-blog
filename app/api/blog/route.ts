@@ -4,8 +4,11 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFileContent, getFileContent, deleteFile } from "@/lib/github"
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const published = req.nextUrl.searchParams.get("published")
+  const where = published === "true" ? { published: true } : {}
   return NextResponse.json(await prisma.blogPost.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { comments: true } } },
   }))

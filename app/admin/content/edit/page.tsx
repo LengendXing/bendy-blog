@@ -3,12 +3,14 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useLocale } from "@/components/locale-provider"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
 function EditContent() {
   const params = useSearchParams()
   const router = useRouter()
+  const { t } = useLocale()
   const id = params.get("id")
   const [post, setPost] = useState<any>(null)
   const [markdown, setMarkdown] = useState("")
@@ -38,19 +40,19 @@ function EditContent() {
     setSaving(false)
   }
 
-  if (!post) return <div className="font-mono text-xs">Loading...</div>
+  if (!post) return <div className="flex items-center justify-center h-64 font-mono text-xs">{t.loading}</div>
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <Button size="sm" variant="ghost" onClick={() => router.push("/admin/content")}>← Back</Button>
-        <Input value={title} onChange={e => setTitle(e.target.value)} className="max-w-xs" placeholder="Title" />
-        <Input value={description} onChange={e => setDescription(e.target.value)} className="max-w-xs" placeholder="Description" />
+        <Button size="sm" variant="ghost" onClick={() => router.push("/admin/content")}>{t.backToBlog}</Button>
+        <Input value={title} onChange={e => setTitle(e.target.value)} className="max-w-xs" placeholder={t.title} />
+        <Input value={description} onChange={e => setDescription(e.target.value)} className="max-w-xs" placeholder={t.description} />
         <label className="flex items-center gap-2 font-mono text-xs">
           <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="accent-pixel-black" />
-          Published
+          {t.published}
         </label>
-        <Button size="sm" onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+        <Button size="sm" onClick={save} disabled={saving}>{saving ? t.saving : t.save}</Button>
       </div>
       <div className="flex-1 grid grid-cols-2 gap-0 border-2 border-pixel-black dark:border-pixel-white min-h-[500px]">
         <textarea
@@ -68,5 +70,5 @@ function EditContent() {
 }
 
 export default function EditPage() {
-  return <Suspense fallback={<div className="font-mono text-xs">Loading...</div>}><EditContent /></Suspense>
+  return <Suspense fallback={<div className="flex items-center justify-center h-64 font-mono text-xs">Loading...</div>}><EditContent /></Suspense>
 }

@@ -1,19 +1,20 @@
-import { prisma } from "@/lib/prisma"
+"use client"
+import { useEffect, useState } from "react"
+import { useLocale } from "@/components/locale-provider"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
-export const revalidate = 60
+export default function AboutPage() {
+  const { locale, t } = useLocale()
+  const [content, setContent] = useState<any>({})
 
-export default async function AboutPage() {
-  const about = await prisma.aboutPage.findFirst()
-  let content: any = {}
-  if (about) {
-    try { content = JSON.parse(about.content) } catch {}
-  }
+  useEffect(() => {
+    fetch(`/api/about?locale=${locale}`).then(r => r.json()).then(setContent)
+  }, [locale])
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
-      <h1 className="font-mono text-lg uppercase tracking-widest mb-12">// About</h1>
+      <h1 className="font-mono text-lg uppercase tracking-widest mb-12">// {t.about}</h1>
       {content.avatar && (
         <div className="mb-8">
           <img src={content.avatar} alt="avatar" className="w-24 h-24 border-2 border-pixel-black dark:border-pixel-white" />
@@ -35,7 +36,7 @@ export default async function AboutPage() {
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.markdown}</ReactMarkdown>
         </div>
       )}
-      {!about && <p className="font-body text-pixel-gray-500">About page not configured yet.</p>}
+      {!content.name && !content.markdown && <p className="font-body text-pixel-gray-500">{t.aboutNotConfigured}</p>}
     </div>
   )
 }

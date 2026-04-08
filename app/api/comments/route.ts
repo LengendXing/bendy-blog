@@ -8,8 +8,11 @@ export async function GET(req: NextRequest) {
   const postId = req.nextUrl.searchParams.get("postId")
   const comments = await prisma.comment.findMany({
     where: postId ? { postId } : {},
-    include: { user: { select: { name: true, image: true, githubUsername: true } }, post: { select: { title: true, slug: true } } },
-    orderBy: { createdAt: "desc" },
+    include: {
+      user: { select: { name: true, image: true, githubUsername: true } },
+      post: { select: { title: true, slug: true } },
+    },
+    orderBy: { createdAt: "asc" },
   })
   return NextResponse.json(comments)
 }
@@ -17,9 +20,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-  const { postId, content } = await req.json()
+  const { postId, content, imageUrl, parentId, replyToId } = await req.json()
   const comment = await prisma.comment.create({
-    data: { postId, content, userId: session.user.id },
+    data: {
+      postId, content, userId: session.user.id,
+      imageUrl: imageUrl || null,
+      parentId: parentId || null,
+      replyToId: replyToId || null,
+    },
     include: { user: { select: { name: true, image: true, githubUsername: true } } },
   })
   const post = await prisma.blogPost.findUnique({ where: { id: postId } })

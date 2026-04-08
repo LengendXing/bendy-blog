@@ -1,23 +1,25 @@
-import { prisma } from "@/lib/prisma"
+"use client"
+import { useEffect, useState } from "react"
 import { ExternalLink } from "lucide-react"
-// import Image from "next/image"
+import { useLocale } from "@/components/locale-provider"
 
-export const revalidate = 60
+export default function ProjectsPage() {
+  const { t } = useLocale()
+  const [projects, setProjects] = useState<any[]>([])
 
-export default async function ProjectsPage() {
-  const projects = await prisma.project.findMany({ orderBy: { sortOrder: "asc" } })
+  useEffect(() => {
+    fetch("/api/projects").then(r => r.json()).then(setProjects)
+  }, [])
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
-      <h1 className="font-mono text-lg uppercase tracking-widest mb-12">// Projects</h1>
+      <h1 className="font-mono text-lg uppercase tracking-widest mb-12">// {t.projects}</h1>
       <div className="space-y-4">
-        {projects.map(p => (
+        {projects.map((p: any) => (
           <a key={p.id} href={p.url || "#"} target="_blank" rel="noopener noreferrer"
             className="group block border-2 border-pixel-black dark:border-pixel-white p-5 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900 transition-colors">
             <div className="flex items-start gap-4">
-              {p.logoUrl && (
-                <img src={p.logoUrl} alt="" className="w-10 h-10 border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0 object-cover" />
-              )}
+              {p.logoUrl && <img src={p.logoUrl} alt="" className="w-10 h-10 border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0 object-cover" />}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm uppercase">{p.title}</span>
@@ -28,7 +30,7 @@ export default async function ProjectsPage() {
             </div>
           </a>
         ))}
-        {projects.length === 0 && <p className="font-body text-pixel-gray-500">No projects yet.</p>}
+        {projects.length === 0 && <p className="font-body text-pixel-gray-500">{t.noProjectsYet}</p>}
       </div>
     </div>
   )

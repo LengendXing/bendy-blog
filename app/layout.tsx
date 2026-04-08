@@ -4,7 +4,7 @@ import { AuthSessionProvider } from "@/components/session-provider"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Pixel Blog",
+  title: "BENDY BLOG",
   description: "A minimal pixel-themed blog",
 }
 
