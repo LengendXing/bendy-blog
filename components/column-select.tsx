@@ -9,9 +9,10 @@ interface Props {
   onCreate?: (name: string) => Promise<{ id: string; name: string } | null>
   placeholder?: string
   allowCreate?: boolean
+  borderless?: boolean
 }
 
-export function ColumnSelect({ columns, value, onChange, onCreate, placeholder, allowCreate }: Props) {
+export function ColumnSelect({ columns, value, onChange, onCreate, placeholder, allowCreate, borderless }: Props) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState("")
   const ref = useRef<HTMLDivElement>(null)
@@ -36,7 +37,9 @@ export function ColumnSelect({ columns, value, onChange, onCreate, placeholder, 
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 border-2 border-pixel-black dark:border-pixel-white px-3 py-1.5 font-mono text-xs hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900 min-w-[100px]">
+        className={`flex items-center gap-1 px-3 py-1.5 font-mono text-xs hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900 min-w-[100px] ${
+          borderless ? "border-0" : "border-2 border-pixel-black dark:border-pixel-white"
+        }`}>
         <span className="truncate">{selected?.name || placeholder || "All"}</span>
         <ChevronDown className="w-3 h-3 shrink-0" />
       </button>

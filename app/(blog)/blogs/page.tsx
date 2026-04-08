@@ -28,7 +28,7 @@ export default function BlogsPage() {
     <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
       <div className="flex items-center justify-between mb-8 sm:mb-12 gap-4 flex-wrap">
         <h1 className="font-mono text-base sm:text-lg uppercase tracking-widest">// {t.blogs}</h1>
-        <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} placeholder={t.allColumns} />
+        <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} placeholder={t.allColumns} borderless />
       </div>
       {loading ? (
         <div className="flex items-center justify-center h-32 font-mono text-xs">{t.loading}</div>

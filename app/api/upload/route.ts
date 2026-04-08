@@ -4,20 +4,35 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 async function getDufsConfig() {
+  // DB config first
   const enabledCfg = await prisma.siteConfig.findUnique({ where: { key: "dufsEnabled" } })
-  if (enabledCfg?.value !== "true") return null
+  const dbEnabled = enabledCfg?.value === "true"
+  // Env fallback
+  const envEnabled = process.env.DUFS_ENABLED === "true"
+
+  if (!dbEnabled && !envEnabled) return null
+
   const urlCfg = await prisma.siteConfig.findUnique({ where: { key: "dufsUrl" } })
   const userCfg = await prisma.siteConfig.findUnique({ where: { key: "dufsUser" } })
   const passCfg = await prisma.siteConfig.findUnique({ where: { key: "dufsPass" } })
-  if (!urlCfg?.value) return null
-  return { url: urlCfg.value, user: userCfg?.value || "", pass: passCfg?.value || "" }
+
+  const url = urlCfg?.value || process.env.DUFS_URL || ""
+  const user = userCfg?.value || process.env.DUFS_USER || ""
+  const pass = passCfg?.value || process.env.DUFS_PASS || ""
+
+  if (!url) return null
+  return { url, user, pass }
 }
 
 async function getGithubImageConfig() {
   const repoCfg = await prisma.siteConfig.findUnique({ where: { key: "githubImageRepo" } })
   const tokenCfg = await prisma.siteConfig.findUnique({ where: { key: "githubImageToken" } })
-  if (!repoCfg?.value || !tokenCfg?.value) return null
-  return { repo: repoCfg.value, token: tokenCfg.value }
+
+  const repo = repoCfg?.value || process.env.GITHUB_IMAGE_REPO || ""
+  const token = tokenCfg?.value || process.env.GITHUB_IMAGE_TOKEN || ""
+
+  if (!repo || !token) return null
+  return { repo, token }
 }
 
 export async function POST(req: NextRequest) {
@@ -30,9 +45,10 @@ export async function POST(req: NextRequest) {
   if (!file.type.startsWith("image/")) return NextResponse.json({ error: "only images allowed" }, { status: 400 })
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${file.type.split("/")[1]}`
+  const ext = file.type.split("/")[1] || "png"
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 
-  // Try Dufs first
+  // Priority 1: Dufs
   const dufs = await getDufsConfig()
   if (dufs) {
     try {
@@ -48,7 +64,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Fallback: GitHub image repo
+  // Priority 2: GitHub image repo
   const ghImg = await getGithubImageConfig()
   if (ghImg) {
     try {
@@ -60,10 +76,7 @@ export async function POST(req: NextRequest) {
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
         },
-        body: JSON.stringify({
-          message: `Upload image ${filename}`,
-          content: buffer.toString("base64"),
-        }),
+        body: JSON.stringify({ message: `Upload image ${filename}`, content: buffer.toString("base64") }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -74,7 +87,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Last fallback: base64 (warn: not recommended for production)
-  const base64 = buffer.toString("base64")
-  return NextResponse.json({ url: `data:${file.type};base64,${base64}` })
+  // Fallback: base64
+  return NextResponse.json({ url: `data:${file.type};base64,${buffer.toString("base64")}` })
 }
