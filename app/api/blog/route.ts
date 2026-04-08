@@ -6,27 +6,33 @@ import { saveFileContent, getFileContent, deleteFile } from "@/lib/github"
 
 export async function GET(req: NextRequest) {
   const published = req.nextUrl.searchParams.get("published")
-  const where = published === "true" ? { published: true } : {}
+  const columnId = req.nextUrl.searchParams.get("columnId")
+  const where: any = {}
+  if (published === "true") where.published = true
+  if (columnId) where.columnId = columnId
   return NextResponse.json(await prisma.blogPost.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { comments: true } } },
+    include: { _count: { select: { comments: true } }, column: true },
   }))
 }
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { slug, title, description, content, published } = await req.json()
+  const { slug, title, description, content, published, columnId } = await req.json()
   const githubPath = `posts/${slug}.md`
   await saveFileContent(githubPath, content || `# ${title}\n`, undefined, `Create post: ${title}`)
-  return NextResponse.json(await prisma.blogPost.create({ data: { slug, title, description, githubPath, published: published ?? false } }))
+  return NextResponse.json(await prisma.blogPost.create({
+    data: { slug, title, description, githubPath, published: published ?? false, columnId: columnId || null },
+    include: { column: true },
+  }))
 }
 
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { id, title, description, content, published } = await req.json()
+  const { id, title, description, content, published, columnId } = await req.json()
   const post = await prisma.blogPost.findUnique({ where: { id } })
   if (!post) return NextResponse.json({ error: "not found" }, { status: 404 })
   if (content !== undefined) {
@@ -35,7 +41,13 @@ export async function PUT(req: NextRequest) {
   }
   return NextResponse.json(await prisma.blogPost.update({
     where: { id },
-    data: { ...(title && { title }), ...(description !== undefined && { description }), ...(published !== undefined && { published }) },
+    data: {
+      ...(title && { title }),
+      ...(description !== undefined && { description }),
+      ...(published !== undefined && { published }),
+      ...(columnId !== undefined && { columnId: columnId || null }),
+    },
+    include: { column: true },
   }))
 }
 

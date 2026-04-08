@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ColumnSelect } from "@/components/column-select"
 import { useLocale } from "@/components/locale-provider"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -13,29 +14,41 @@ function EditContent() {
   const { t } = useLocale()
   const id = params.get("id")
   const [post, setPost] = useState<any>(null)
+  const [columns, setColumns] = useState<any[]>([])
   const [markdown, setMarkdown] = useState("")
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [published, setPublished] = useState(false)
+  const [columnId, setColumnId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!id) return
-    fetch("/api/blog").then(r => r.json()).then(posts => {
+    Promise.all([
+      fetch("/api/blog").then(r => r.json()),
+      fetch("/api/columns").then(r => r.json()),
+    ]).then(([posts, cols]) => {
+      setColumns(cols)
       const p = posts.find((x: any) => x.id === id)
       if (p) {
-        setPost(p); setTitle(p.title); setDescription(p.description || ""); setPublished(p.published)
+        setPost(p); setTitle(p.title); setDescription(p.description || "")
+        setPublished(p.published); setColumnId(p.columnId || null)
         fetch(`/api/github?path=${encodeURIComponent(p.githubPath)}`).then(r => r.json()).then(f => setMarkdown(f.content || ""))
       }
     })
   }, [id])
 
+  async function createColumn(name: string) {
+    const res = await fetch("/api/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
+    if (res.ok) { const col = await res.json(); if (!columns.find(c => c.id === col.id)) setColumns(c => [...c, col]); return col }
+    return null
+  }
+
   async function save() {
     setSaving(true)
     await fetch("/api/blog", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, title, description, content: markdown, published }),
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, title, description, content: markdown, published, columnId }),
     })
     setSaving(false)
   }
@@ -44,26 +57,21 @@ function EditContent() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
         <Button size="sm" variant="ghost" onClick={() => router.push("/admin/content")}>{t.backToBlog}</Button>
-        <Input value={title} onChange={e => setTitle(e.target.value)} className="max-w-xs" placeholder={t.title} />
-        <Input value={description} onChange={e => setDescription(e.target.value)} className="max-w-xs" placeholder={t.description} />
+        <Input value={title} onChange={e => setTitle(e.target.value)} className="max-w-[200px]" placeholder={t.title} />
+        <Input value={description} onChange={e => setDescription(e.target.value)} className="max-w-[200px]" placeholder={t.description} />
+        <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} onCreate={createColumn} placeholder={t.allColumns} allowCreate />
         <label className="flex items-center gap-2 font-mono text-xs">
-          <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="accent-pixel-black" />
-          {t.published}
+          <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="accent-pixel-black" />{t.published}
         </label>
         <Button size="sm" onClick={save} disabled={saving}>{saving ? t.saving : t.save}</Button>
       </div>
-      <div className="flex-1 grid grid-cols-2 gap-0 border-2 border-pixel-black dark:border-pixel-white min-h-[500px]">
-        <textarea
-          value={markdown}
-          onChange={e => setMarkdown(e.target.value)}
-          className="p-4 font-body text-sm bg-transparent resize-none focus:outline-none border-r-2 border-pixel-black dark:border-pixel-white"
-          placeholder="Write markdown..."
-        />
-        <div className="p-4 overflow-auto prose-pixel">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
-        </div>
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-pixel-black dark:border-pixel-white min-h-[400px] sm:min-h-[500px]">
+        <textarea value={markdown} onChange={e => setMarkdown(e.target.value)}
+          className="p-3 sm:p-4 font-body text-sm bg-transparent resize-none focus:outline-none border-b-2 md:border-b-0 md:border-r-2 border-pixel-black dark:border-pixel-white"
+          placeholder="Write markdown..." />
+        <div className="p-3 sm:p-4 overflow-auto prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown></div>
       </div>
     </div>
   )

@@ -53,6 +53,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model Column {
+  id    String     @id @default(cuid())
+  name  String     @unique // max 6 chars enforced in API
+  posts BlogPost[]
+}
+
 model BlogPost {
   id          String    @id @default(cuid())
   slug        String    @unique
@@ -62,6 +68,8 @@ model BlogPost {
   views       Int       @default(0)
   shares      Int       @default(0)
   published   Boolean   @default(false)
+  columnId    String?
+  column      Column?   @relation(fields: [columnId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   comments    Comment[]

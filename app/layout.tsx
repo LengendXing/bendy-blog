@@ -1,11 +1,17 @@
 import "@/styles/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthSessionProvider } from "@/components/session-provider"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 
 export const metadata: Metadata = {
   title: "BENDY BLOG",
   description: "A minimal pixel-themed blog",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
