@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-pixel-white dark:bg-pixel-black text-pixel-black dark:text-pixel-white font-body;
+  }
+  ::selection {
+    @apply bg-pixel-black dark:bg-pixel-white text-pixel-white dark:text-pixel-black;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-pixel-gray-300 dark:bg-pixel-gray-700; }
+}
+
+/* Pixel border utility */
+.pixel-border {
+  box-shadow: 
+    2px 0 0 0 currentColor,
+    -2px 0 0 0 currentColor,
+    0 2px 0 0 currentColor,
+    0 -2px 0 0 currentColor;
+}
+
+/* Markdown content styles */
+.prose-pixel h1 { @apply font-mono text-2xl mb-6 mt-8; }
+.prose-pixel h2 { @apply font-mono text-xl mb-4 mt-6; }
+.prose-pixel h3 { @apply font-mono text-lg mb-3 mt-5; }
+.prose-pixel p { @apply mb-4 leading-relaxed; }
+.prose-pixel ul { @apply list-disc ml-6 mb-4; }
+.prose-pixel ol { @apply list-decimal ml-6 mb-4; }
+.prose-pixel li { @apply mb-1; }
+.prose-pixel code { @apply bg-pixel-gray-100 dark:bg-pixel-gray-800 px-1.5 py-0.5 text-sm border border-pixel-gray-200 dark:border-pixel-gray-700; }
+.prose-pixel pre { @apply bg-pixel-gray-100 dark:bg-pixel-gray-900 p-4 mb-4 overflow-x-auto border-2 border-pixel-black dark:border-pixel-white; }
+.prose-pixel pre code { @apply bg-transparent border-0 p-0; }
+.prose-pixel blockquote { @apply border-l-4 border-pixel-black dark:border-pixel-white pl-4 italic mb-4; }
+.prose-pixel a { @apply underline underline-offset-2 hover:decoration-2; }
+.prose-pixel img { @apply border-2 border-pixel-black dark:border-pixel-white my-4; }
+.prose-pixel hr { @apply border-pixel-black dark:border-pixel-white my-8; }
+.prose-pixel table { @apply w-full border-collapse mb-4; }
+.prose-pixel th, .prose-pixel td { @apply border-2 border-pixel-black dark:border-pixel-white p-2 text-left text-sm; }
