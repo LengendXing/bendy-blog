@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { ExternalLink } from "lucide-react"
-import Image from "next/image"
+// import Image from "next/image"
 
 export const revalidate = 60
 
@@ -16,7 +16,7 @@ export default async function ProjectsPage() {
             className="group block border-2 border-pixel-black dark:border-pixel-white p-5 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900 transition-colors">
             <div className="flex items-start gap-4">
               {p.logoUrl && (
-                <Image src={p.logoUrl} alt="" width={40} height={40} className="border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0" />
+                <img src={p.logoUrl} alt="" className="w-10 h-10 border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0 object-cover" />
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">

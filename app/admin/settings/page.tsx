@@ -22,7 +22,8 @@ export default function SettingsPage() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "webhook", config: { url: wf.url, method: wf.method, headers, body } }),
     })
-    setConfigs(c => [...c, await res.json()])
+    const newConfig = await res.json()
+      setConfigs(c => [...c, newConfig])
     setWf({ url: "", method: "POST", headers: "{}", body: '{"text":"{{event}}: {{title}} - {{url}} ({{views}} views)"}' })
   }
 
@@ -32,7 +33,8 @@ export default function SettingsPage() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "email", config: { to: ef.to, template: ef.template } }),
     })
-    setConfigs(c => [...c, await res.json()])
+    const newConfig = await res.json()
+      setConfigs(c => [...c, newConfig])
     setEf({ to: "", template: ef.template })
   }
 

@@ -20,7 +20,8 @@ export default function ProjectsAdminPage() {
       setProjects(p => p.map(x => x.id === editId ? updated : x))
     } else {
       const res = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) })
-      setProjects(p => [...p, await res.json()])
+      const newProject = await res.json()
+        setProjects(p => [...p, newProject])
     }
     setForm({ title: "", description: "", url: "", logoUrl: "", sortOrder: 0 }); setEditId(null)
   }
