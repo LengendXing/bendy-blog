@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       }
       const uploadUrl = `${dufs.url.replace(/\/$/, "")}/${filename}`
       const res = await fetch(uploadUrl, { method: "PUT", headers, body: buffer })
-      if (res.ok) return NextResponse.json({ url: uploadUrl })
+      if (res.ok) return NextResponse.json({ url: `/api/image?url=${encodeURIComponent(uploadUrl)}` })
     } catch (e) {
       console.error("Dufs upload failed:", e)
     }
