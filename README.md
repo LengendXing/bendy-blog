@@ -16,6 +16,40 @@ A minimal, pixel-themed blog with admin dashboard.
 | Notifications | Webhook + Email (SMTP) |
 | Deploy | Vercel |
 
+## Screenshots
+
+### User Interface
+
+![User 1](docs/user-1.png)
+
+![User 2](docs/user-2.png)
+
+![User 3](docs/user-3.png)
+
+![User 4](docs/user-4.png)
+
+### Admin Interface
+
+![Admin 1](docs/admin-1.png)
+
+![Admin 1-2](docs/admin-1-2.png)
+
+![Admin 2](docs/admin-2.png)
+
+![Admin 2 Edit Post](docs/admin-2-editPost.png)
+
+![Admin 2 New Post](docs/admin-2-newPost.png)
+
+![Admin 3](docs/admin-3.png)
+
+![Admin 4](docs/admin-4.png)
+
+![Admin 5](docs/admin-5.png)
+
+![Admin 5 Edit Project](docs/admin-5-editProject.png)
+
+![Admin 6](docs/admin-6.png)
+
 ## Quick Start
 
 ```bash
