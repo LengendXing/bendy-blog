@@ -31,7 +31,7 @@ type T = {
 }
 
 const zh: T = {
-  blogs: "博客", projects: "项目", about: "关于", noPostsYet: "暂无文章",
+  blogs: "Blogs", projects: "Projects", about: "About", noPostsYet: "None yet.",
   noProjectsYet: "暂无项目", aboutNotConfigured: "关于页面未配置",
   signInToComment: "登录 GitHub 后评论", writeComment: "写评论...",
   post: "发送", noComments: "暂无评论", share: "分享", views: "阅读",
@@ -41,7 +41,7 @@ const zh: T = {
   loading: "Loading...", save: "保存", cancel: "取消", edit: "编辑",
   delete: "删除", add: "添加", enable: "启用", disable: "禁用",
   backToBlog: "← 返回博客", signOut: "退出", adminRequired: "需要管理员权限",
-  signInGithub: "使用 GitHub 登录",
+  signInGithub: "Sign in with GitHub is required to access admin panel",
   totalViews: "总浏览量", totalPosts: "文章总数", totalComments: "评论总数",
   totalShares: "分享总数", topViewed: "最高浏览", mostCommented: "最多评论",
   topViewsSingle: "单篇最高浏览", lastUpdated: "最后更新",
@@ -52,7 +52,7 @@ const zh: T = {
   webhookConfig: "Webhook 配置", emailConfig: "邮件配置",
   notifySettings: "通知设置", templateVars: "模板变量",
   activeConfigs: "已启用配置", siteSettings: "站点设置", language: "语言",
-  allColumns: "全部", column: "专栏", columnPlaceholder: "输入专栏名回车创建 (≤6字)",
+  allColumns: "ALL", column: "专栏", columnPlaceholder: "输入专栏名回车创建 (≤6字)",
   siteSettingsTab: "站点设置", webhookTab: "Webhook通知", emailTab: "Email通知",
   imageStorage: "图片存储", dufsService: "Dufs服务",
   githubImageRepo: "GitHub图片仓库", expand: "展开", collapse: "收起",

@@ -23,6 +23,8 @@ export default function ContentPage() {
   const [importing, setImporting] = useState(false)
   const [importResults, setImportResults] = useState<any[] | null>(null)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState("")
+  const [searchActive, setSearchActive] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -33,8 +35,13 @@ export default function ContentPage() {
     ]).then(([p, c]) => { setAllPosts(p); setColumns(c); setLoading(false) })
   }, [])
 
-  const totalPages = Math.max(1, Math.ceil(allPosts.length / PAGE_SIZE))
-  const posts = allPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const filtered = searchActive
+    ? allPosts.filter(p => p.title.toLowerCase().includes(searchActive.toLowerCase()))
+    : allPosts
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const posts = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  function doSearch() { setSearchActive(search); setPage(1) }
 
   async function createColumn(name: string) {
     const res = await fetch("/api/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
@@ -83,6 +90,17 @@ export default function ContentPage() {
           <Button size="sm" variant="outline" onClick={() => { setShowImport(!showImport); setImportResults(null) }}><Upload className="w-3 h-3 mr-2" />Import</Button>
           <Button size="sm" onClick={() => setShowNew(!showNew)}><Plus className="w-3 h-3 mr-2" />{t.newPost}</Button>
         </div>
+      </div>
+
+      <div className="flex items-center gap-0 mb-4 max-w-sm">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && doSearch()}
+          placeholder={`${t.title}...`}
+          className="flex-1 h-10 border-2 border-r-0 border-pixel-black dark:border-pixel-white bg-transparent px-3 text-sm font-body focus:outline-none" />
+        <button onClick={doSearch}
+          className="h-10 px-4 border-2 border-pixel-black dark:border-pixel-white bg-pixel-black dark:bg-pixel-white text-pixel-white dark:text-pixel-black font-mono text-xs hover:opacity-80 shrink-0">
+          Go !
+        </button>
       </div>
 
       {showImport && (
@@ -135,7 +153,7 @@ export default function ContentPage() {
             </div>
           </div>
         ))}
-        {allPosts.length === 0 && <p className="font-body text-pixel-gray-500 text-sm">{t.noPostsYet}</p>}
+        {filtered.length === 0 && <p className="font-body text-pixel-gray-500 text-sm">{t.noPostsYet}</p>}
       </div>
 
       {totalPages > 1 && (

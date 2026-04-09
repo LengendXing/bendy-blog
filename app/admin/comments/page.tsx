@@ -13,11 +13,14 @@ export default function CommentsPage() {
   const [loading, setLoading] = useState(true)
   const [editId, setEditId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState("")
+  const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("")
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
 
   useEffect(() => { fetch("/api/comments").then(r => r.json()).then(d => { setComments(d); setLoading(false) }) }, [])
+
+  function doSearch() { setFilter(search); setPage(1) }
 
   const grouped = comments.reduce((acc: any, c: any) => {
     const key = c.post?.slug || "unknown"
@@ -29,9 +32,6 @@ export default function CommentsPage() {
   const allEntries = Object.entries(grouped).filter(([k, v]: any) => !filter || v.title.toLowerCase().includes(filter.toLowerCase()))
   const totalPages = Math.max(1, Math.ceil(allEntries.length / PAGE_SIZE))
   const entries = allEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  // Reset page when filter changes
-  useEffect(() => { setPage(1) }, [filter])
 
   async function deleteComment(id: string) {
     if (!confirm("Delete?")) return
@@ -54,8 +54,17 @@ export default function CommentsPage() {
   return (
     <div>
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.commentsMgmt}</h1>
-      <input placeholder={`${t.blogs}...`} value={filter} onChange={e => setFilter(e.target.value)}
-        className="mb-4 w-full max-w-sm border-2 border-pixel-black dark:border-pixel-white bg-transparent px-3 py-2 text-sm font-body focus:outline-none" />
+
+      <div className="flex items-center gap-0 mb-4 max-w-sm">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && doSearch()}
+          placeholder={`${t.title}...`}
+          className="flex-1 h-10 border-2 border-r-0 border-pixel-black dark:border-pixel-white bg-transparent px-3 text-sm font-body focus:outline-none" />
+        <button onClick={doSearch}
+          className="h-10 px-4 border-2 border-pixel-black dark:border-pixel-white bg-pixel-black dark:bg-pixel-white text-pixel-white dark:text-pixel-black font-mono text-xs hover:opacity-80 shrink-0">
+          Go !
+        </button>
+      </div>
 
       {entries.map(([slug, group]: any) => {
         const isExpanded = expanded.has(slug)

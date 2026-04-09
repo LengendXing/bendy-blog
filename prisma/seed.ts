@@ -3,11 +3,11 @@ const prisma = new PrismaClient()
 
 async function main() {
   await prisma.column.upsert({
-    where: { name: "随笔" },
+    where: { name: "reflections" },
     update: {},
-    create: { name: "随笔" },
+    create: { name: "reflections" },
   })
-  console.log("Default column '随笔' created.")
+  console.log("Default column 'reflections' created.")
 }
 
 main().then(() => prisma.$disconnect()).catch(e => { console.error(e); prisma.$disconnect(); process.exit(1) })
