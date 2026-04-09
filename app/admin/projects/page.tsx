@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Trash2, X, Check } from "lucide-react"
+import { Pencil, Trash2, X, Check, ExternalLink } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 
 export default function ProjectsAdminPage() {
@@ -67,17 +67,17 @@ export default function ProjectsAdminPage() {
             <button onClick={() => setShowNew(true)} className="font-mono text-sm hover:opacity-70" title={t.add}>＋</button>
           )}
         </div>
-        {projects.map(p => (
-          <div key={p.id} className="border-b border-pixel-gray-200 dark:border-pixel-gray-800 py-3 flex items-center gap-3 sm:gap-4">
-            <span className="font-mono text-xs text-pixel-gray-400 w-8 shrink-0 hidden sm:block">{p.id.slice(-4)}</span>
+        {projects.map((p, index) => (
+          <div key={p.id} className="border-b border-pixel-gray-200 dark:border-pixel-gray-800 py-3 flex items-center gap-6 sm:gap-8">
+            <span className="font-mono text-xs text-pixel-gray-400 w-8 shrink-0 hidden sm:block">{index + 1}</span>
             {p.logoUrl ? (
               <img src={p.logoUrl} alt="" className="w-8 h-8 rounded-full border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0 object-cover" />
             ) : (
               <div className="w-8 h-8 rounded-full border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0 bg-pixel-gray-100 dark:bg-pixel-gray-800" />
             )}
-            <span className="font-body text-sm min-w-0 truncate flex-shrink-0 max-w-[120px] sm:max-w-[200px]">{p.title}</span>
+            <span className="font-body text-sm min-w-0 truncate flex-shrink-0 max-w-[150px] sm:max-w-[250px]">{p.title}</span>
             <span className="font-body text-xs text-pixel-gray-500 hidden md:block flex-1 min-w-0 truncate">{p.description}</span>
-            <a href={p.url} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-pixel-gray-400 hover:underline hidden lg:block max-w-[200px] truncate">{p.url}</a>
+            <button onClick={() => window.open(p.url, '_blank')} title={p.url} className="font-mono text-xs text-pixel-gray-400 hover:opacity-70 hidden lg:flex items-center justify-center w-8 h-8 shrink-0"><ExternalLink className="w-3.5 h-3.5" /></button>
             <span className="font-mono text-xs text-pixel-gray-400 w-8 text-center shrink-0">{p.sortOrder}</span>
             <div className="flex gap-1 shrink-0 ml-auto">
               <button onClick={() => startEdit(p)} className="hover:opacity-70"><Pencil className="w-3.5 h-3.5" /></button>
