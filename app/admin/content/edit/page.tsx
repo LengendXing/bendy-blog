@@ -20,6 +20,7 @@ function EditContent() {
   const [description, setDescription] = useState("")
   const [published, setPublished] = useState(false)
   const [columnId, setColumnId] = useState<string | null>(null)
+  const [publishDate, setPublishDate] = useState("")
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -33,6 +34,7 @@ function EditContent() {
       if (p) {
         setPost(p); setTitle(p.title); setDescription(p.description || "")
         setPublished(p.published); setColumnId(p.columnId || null)
+        if (p.publishDate) setPublishDate(new Date(p.publishDate).toISOString().slice(0, 10))
         fetch(`/api/github?path=${encodeURIComponent(p.githubPath)}`).then(r => r.json()).then(f => setMarkdown(f.content || ""))
       }
     })
@@ -48,7 +50,7 @@ function EditContent() {
     setSaving(true)
     await fetch("/api/blog", {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, title, description, content: markdown, published, columnId }),
+      body: JSON.stringify({ id, title, description, content: markdown, published, columnId, publishDate: publishDate || null }),
     })
     setSaving(false)
   }
@@ -59,9 +61,14 @@ function EditContent() {
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
         <Button size="sm" variant="ghost" onClick={() => router.push("/admin/content")}>{t.backToBlog}</Button>
-        <Input value={title} onChange={e => setTitle(e.target.value)} className="max-w-[200px]" placeholder={t.title} />
-        <Input value={description} onChange={e => setDescription(e.target.value)} className="max-w-[200px]" placeholder={t.description} />
+        <Input value={title} onChange={e => setTitle(e.target.value)} className="max-w-[180px]" placeholder={t.title} />
+        <Input value={description} onChange={e => setDescription(e.target.value)} className="max-w-[180px]" placeholder={t.description} />
         <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} onCreate={createColumn} placeholder={t.allColumns} allowCreate />
+        <div className="flex items-center gap-1">
+          <label className="font-mono text-[10px] text-pixel-gray-500">Pub Date</label>
+          <input type="date" value={publishDate} onChange={e => setPublishDate(e.target.value)}
+            className="border-2 border-pixel-black dark:border-pixel-white bg-transparent px-2 py-1 font-mono text-xs focus:outline-none h-8" />
+        </div>
         <label className="flex items-center gap-2 font-mono text-xs">
           <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="accent-pixel-black" />{t.published}
         </label>

@@ -3,8 +3,30 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Trash2, Plus } from "lucide-react"
+import { Trash2, Plus, Eye, EyeOff } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
+
+function SecretInput({ value, onChange, placeholder, disabled }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean
+}) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="flex h-10 w-full border-2 border-pixel-black dark:border-pixel-white bg-transparent px-3 py-2 pr-9 text-sm font-body placeholder:text-pixel-gray-400 focus:outline-none focus:ring-2 focus:ring-pixel-gray-400 disabled:opacity-50"
+      />
+      <button type="button" onClick={() => setShow(!show)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-pixel-gray-400 hover:text-pixel-black dark:hover:text-pixel-white">
+        {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  )
+}
 
 export default function SettingsPage() {
   const { t } = useLocale()
@@ -47,11 +69,7 @@ export default function SettingsPage() {
     setSavingSite(true)
     await fetch("/api/config", {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        blogTitle, footerText,
-        dufsEnabled: dufsEnabled ? "true" : "false", dufsUrl, dufsUser, dufsPass,
-        githubImageRepo, githubImageToken,
-      }),
+      body: JSON.stringify({ blogTitle, footerText, dufsEnabled: dufsEnabled ? "true" : "false", dufsUrl, dufsUser, dufsPass, githubImageRepo, githubImageToken }),
     })
     setSavingSite(false)
   }
@@ -60,23 +78,15 @@ export default function SettingsPage() {
     if (!wf.url) return
     let headers = {}; try { headers = JSON.parse(wf.headers) } catch {}
     let body = {}; try { body = JSON.parse(wf.body) } catch { body = { text: wf.body } }
-    const res = await fetch("/api/notify", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "webhook", config: { url: wf.url, method: wf.method, headers, body } }),
-    })
-    const nc = await res.json()
-    setConfigs(c => [...c, nc])
+    const res = await fetch("/api/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "webhook", config: { url: wf.url, method: wf.method, headers, body } }) })
+    const nc = await res.json(); setConfigs(c => [...c, nc])
     setWf({ url: "", method: "POST", headers: "{}", body: '{"text":"{{event}}: {{title}} - {{url}} ({{views}} views)"}' })
   }
 
   async function addEmail() {
     if (!ef.to) return
-    const res = await fetch("/api/notify", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "email", config: { to: ef.to, template: ef.template } }),
-    })
-    const nc = await res.json()
-    setConfigs(c => [...c, nc])
+    const res = await fetch("/api/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "email", config: { to: ef.to, template: ef.template } }) })
+    const nc = await res.json(); setConfigs(c => [...c, nc])
     setEf({ to: "", template: ef.template })
   }
 
@@ -122,7 +132,7 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="font-mono text-[10px] block mb-1">URL</label><Input value={dufsUrl} onChange={e => setDufsUrl(e.target.value)} placeholder="https://dufs.example.com" disabled={!dufsEnabled} /></div>
                 <div><label className="font-mono text-[10px] block mb-1">User</label><Input value={dufsUser} onChange={e => setDufsUser(e.target.value)} disabled={!dufsEnabled} /></div>
-                <div><label className="font-mono text-[10px] block mb-1">Pass</label><Input type="password" value={dufsPass} onChange={e => setDufsPass(e.target.value)} disabled={!dufsEnabled} /></div>
+                <div><label className="font-mono text-[10px] block mb-1">Pass</label><SecretInput value={dufsPass} onChange={setDufsPass} disabled={!dufsEnabled} /></div>
               </div>
             </div>
 
@@ -131,7 +141,7 @@ export default function SettingsPage() {
               <p className="font-body text-[10px] text-pixel-gray-400 mb-2">Fallback when Dufs is off. Format: owner/repo</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="font-mono text-[10px] block mb-1">Repo</label><Input value={githubImageRepo} onChange={e => setGithubImageRepo(e.target.value)} placeholder="user/blog-images" /></div>
-                <div><label className="font-mono text-[10px] block mb-1">Token</label><Input type="password" value={githubImageToken} onChange={e => setGithubImageToken(e.target.value)} /></div>
+                <div><label className="font-mono text-[10px] block mb-1">Token</label><SecretInput value={githubImageToken} onChange={setGithubImageToken} /></div>
               </div>
             </div>
           </div>
@@ -148,8 +158,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div><label className="font-mono text-xs block mb-1">URL</label><Input value={wf.url} onChange={e => setWf(f => ({ ...f, url: e.target.value }))} placeholder="https://..." /></div>
               <div><label className="font-mono text-xs block mb-1">Method</label>
-                <select value={wf.method} onChange={e => setWf(f => ({ ...f, method: e.target.value }))}
-                  className="h-10 w-full border-2 border-pixel-black dark:border-pixel-white bg-transparent px-3 font-body text-sm">
+                <select value={wf.method} onChange={e => setWf(f => ({ ...f, method: e.target.value }))} className="h-10 w-full border-2 border-pixel-black dark:border-pixel-white bg-transparent px-3 font-body text-sm">
                   <option value="POST">POST</option><option value="GET">GET</option>
                 </select>
               </div>

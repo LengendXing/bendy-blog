@@ -11,9 +11,7 @@ export default function BlogsPage() {
   const [columnId, setColumnId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetch("/api/columns").then(r => r.json()).then(setColumns)
-  }, [])
+  useEffect(() => { fetch("/api/columns").then(r => r.json()).then(setColumns) }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -23,6 +21,11 @@ export default function BlogsPage() {
       setLoading(false)
     })
   }, [columnId])
+
+  function displayDate(post: any) {
+    const d = post.publishDate || post.createdAt
+    return new Date(d).toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
@@ -45,7 +48,7 @@ export default function BlogsPage() {
                   {post.column && <span className="font-mono text-[10px] text-pixel-gray-400 border border-pixel-gray-300 dark:border-pixel-gray-700 px-1 shrink-0 hidden sm:inline">{post.column.name}</span>}
                 </div>
                 <time className="font-mono text-[10px] sm:text-xs text-pixel-gray-400 shrink-0">
-                  {new Date(post.createdAt).toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}
+                  {displayDate(post)}
                 </time>
               </div>
               {post.description && <p className="font-body text-xs text-pixel-gray-500 mt-1 ml-6 sm:ml-8 truncate">{post.description}</p>}

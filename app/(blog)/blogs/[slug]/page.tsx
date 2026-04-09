@@ -28,5 +28,13 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     updatedAt: c.updatedAt.toISOString(),
   }))
 
-  return <BlogContent post={post} markdown={markdown} initialComments={serialized} />
+  return <BlogContent
+    post={{
+      ...post,
+      publishDate: post.publishDate?.toISOString() || null,
+      updatedAt: post.updatedAt.toISOString(),
+    }}
+    markdown={markdown}
+    initialComments={serialized}
+  />
 }

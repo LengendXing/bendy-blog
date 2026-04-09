@@ -2,8 +2,10 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Trash2, Pencil, Check, X, Plus, Minus } from "lucide-react"
+import { Trash2, Pencil, Check, X, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
+
+const PAGE_SIZE = 15
 
 export default function CommentsPage() {
   const { t } = useLocale()
@@ -13,6 +15,7 @@ export default function CommentsPage() {
   const [editContent, setEditContent] = useState("")
   const [filter, setFilter] = useState("")
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [page, setPage] = useState(1)
 
   useEffect(() => { fetch("/api/comments").then(r => r.json()).then(d => { setComments(d); setLoading(false) }) }, [])
 
@@ -22,6 +25,13 @@ export default function CommentsPage() {
     acc[key].comments.push(c)
     return acc
   }, {})
+
+  const allEntries = Object.entries(grouped).filter(([k, v]: any) => !filter || v.title.toLowerCase().includes(filter.toLowerCase()))
+  const totalPages = Math.max(1, Math.ceil(allEntries.length / PAGE_SIZE))
+  const entries = allEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  // Reset page when filter changes
+  useEffect(() => { setPage(1) }, [filter])
 
   async function deleteComment(id: string) {
     if (!confirm("Delete?")) return
@@ -36,22 +46,17 @@ export default function CommentsPage() {
   }
 
   function toggleExpand(slug: string) {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(slug)) next.delete(slug); else next.add(slug)
-      return next
-    })
+    setExpanded(prev => { const next = new Set(prev); if (next.has(slug)) next.delete(slug); else next.add(slug); return next })
   }
 
   if (loading) return <div className="flex items-center justify-center h-64 font-mono text-xs">{t.loading}</div>
-
-  const entries = Object.entries(grouped).filter(([k, v]: any) => !filter || v.title.toLowerCase().includes(filter.toLowerCase()))
 
   return (
     <div>
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.commentsMgmt}</h1>
       <input placeholder={`${t.blogs}...`} value={filter} onChange={e => setFilter(e.target.value)}
         className="mb-4 w-full max-w-sm border-2 border-pixel-black dark:border-pixel-white bg-transparent px-3 py-2 text-sm font-body focus:outline-none" />
+
       {entries.map(([slug, group]: any) => {
         const isExpanded = expanded.has(slug)
         return (
@@ -65,7 +70,7 @@ export default function CommentsPage() {
                 </button>
               </div>
             </div>
-            {isExpanded && (
+            {isExpanded ? (
               <div className="space-y-2">
                 {group.comments.map((c: any) => (
                   <div key={c.id} className="border-2 border-pixel-gray-200 dark:border-pixel-gray-800 p-3 flex items-start gap-3">
@@ -84,7 +89,7 @@ export default function CommentsPage() {
                       ) : (
                         <>
                           <p className="font-body text-xs text-pixel-gray-600 dark:text-pixel-gray-400 break-all">{c.content}</p>
-                          {c.imageUrl && <img src={c.imageUrl} alt="" className="max-h-20 border border-pixel-gray-300 mt-1" />}
+                          {c.imageUrl && <img src={c.imageUrl} alt="" className="max-h-20 border border-pixel-gray-300 mt-1" onError={e => (e.currentTarget.style.display = "none")} />}
                         </>
                       )}
                     </div>
@@ -97,14 +102,27 @@ export default function CommentsPage() {
                   </div>
                 ))}
               </div>
-            )}
-            {!isExpanded && (
+            ) : (
               <p className="font-body text-xs text-pixel-gray-400">{group.comments.length} {t.comments}</p>
             )}
           </div>
         )
       })}
-      {entries.length === 0 && <p className="font-body text-sm text-pixel-gray-500">{t.noComments}</p>}
+      {allEntries.length === 0 && <p className="font-body text-sm text-pixel-gray-500">{t.noComments}</p>}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 mt-6">
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+            className="border-2 border-pixel-black dark:border-pixel-white w-8 h-8 flex items-center justify-center disabled:opacity-30 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="font-mono text-xs">{page} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            className="border-2 border-pixel-black dark:border-pixel-white w-8 h-8 flex items-center justify-center disabled:opacity-30 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

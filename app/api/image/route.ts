@@ -5,10 +5,9 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url")
   if (!url) return NextResponse.json({ error: "missing url" }, { status: 400 })
 
-  // Only proxy Dufs URLs
   const dufsUrlCfg = await prisma.siteConfig.findUnique({ where: { key: "dufsUrl" } })
   const dufsUrl = dufsUrlCfg?.value || process.env.DUFS_URL || ""
-  
+
   if (!dufsUrl || !url.startsWith(dufsUrl)) {
     return NextResponse.redirect(url)
   }

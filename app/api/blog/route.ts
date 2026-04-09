@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (columnId) where.columnId = columnId
   return NextResponse.json(await prisma.blogPost.findMany({
     where,
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
     include: { _count: { select: { comments: true } }, column: true },
   }))
 }
@@ -20,11 +20,16 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { slug, title, description, content, published, columnId } = await req.json()
+  const { slug, title, description, content, published, columnId, publishDate } = await req.json()
   const githubPath = `posts/${slug}.md`
   await saveFileContent(githubPath, content || `# ${title}\n`, undefined, `Create post: ${title}`)
   return NextResponse.json(await prisma.blogPost.create({
-    data: { slug, title, description, githubPath, published: published ?? false, columnId: columnId || null },
+    data: {
+      slug, title, description, githubPath,
+      published: published ?? false,
+      columnId: columnId || null,
+      publishDate: publishDate ? new Date(publishDate) : null,
+    },
     include: { column: true },
   }))
 }
@@ -32,7 +37,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { id, title, description, content, published, columnId } = await req.json()
+  const { id, title, description, content, published, columnId, publishDate } = await req.json()
   const post = await prisma.blogPost.findUnique({ where: { id } })
   if (!post) return NextResponse.json({ error: "not found" }, { status: 404 })
   if (content !== undefined) {
@@ -46,6 +51,7 @@ export async function PUT(req: NextRequest) {
       ...(description !== undefined && { description }),
       ...(published !== undefined && { published }),
       ...(columnId !== undefined && { columnId: columnId || null }),
+      ...(publishDate !== undefined && { publishDate: publishDate ? new Date(publishDate) : null }),
     },
     include: { column: true },
   }))
