@@ -31,7 +31,7 @@ type T = {
 }
 
 const zh: T = {
-  blogs: "Blogs", projects: "Projects", about: "About", noPostsYet: "None yet.",
+  blogs: "博客", projects: "项目", about: "关于", noPostsYet: "暂无文章",
   noProjectsYet: "暂无项目", aboutNotConfigured: "关于页面未配置",
   signInToComment: "登录 GitHub 后评论", writeComment: "写评论...",
   post: "发送", noComments: "暂无评论", share: "分享", views: "阅读",
