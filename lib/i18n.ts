@@ -1,8 +1,8 @@
-export const locales = ["zh", "mn", "ug", "en", "ar", "ru", "ja", "ko"] as const
+export const locales = ["zh", "mn", "ug", "bo", "en", "ar", "ru", "ja", "ko"] as const
 export type Locale = (typeof locales)[number]
 
 export const localeNames: Record<Locale, string> = {
-  zh: "中文", mn: "ᠮᠣᠩᠭᠣᠯ", ug: "ئۇيغۇرچە", en: "English",
+  zh: "中文", mn: "ᠮᠣᠩᠭᠣᠯ", ug: "ئۇيغۇرچە", bo: "བོད་སྐད།", en: "English",
   ar: "العربية", ru: "Русский", ja: "日本語", ko: "한국어",
 }
 
@@ -141,7 +141,41 @@ const ko: T = { ...en,
   noActivityToday: "오늘은 아무도 방해하지 않았습니다", expand: "펼치기", collapse: "접기",
 }
 
-const translations: Record<Locale, T> = { zh, en, mn, ug, ar, ru, ja, ko }
+const bo: T = { ...en,
+  blogs: "དེབ་ཐོ།", projects: "ལས་གྲུབ།", about: "སྐོར།", noPostsYet: "ཡིག་སྒྲིག་མེད།",
+  noProjectsYet: "ལས་གྲུབ་མེད།", aboutNotConfigured: "སྐོར་ཤོག་བཀོད་མེད།",
+  signInToComment: "GitHub ཐོག་ནས་འཛུལ་ནས་མཆན་འཇོག", writeComment: "མཆན་འབྲི།...",
+  post: "གཏོང་།", noComments: "མཆན་མེད།", share: "མི་མང་ལ་གཏོང་།",
+  views: "ལྟ་གྲངས།", comments: "མཆན།", replyTo: "ལན་འདེབས།",
+  pasteImage: "པར་རིས་སྦྱར་ཆོག",
+  overview: "སྤྱིར་བཏང་།", content: "ནང་དོན།", commentsMgmt: "མཆན་དོ་དམ།",
+  aboutPage: "སྐོར་ཤོག", projectsMgmt: "ལས་གྲུབ་དོ་དམ།", settings: "བཀོད་སྒྲིག",
+  loading: "ཁ་ལོ་སྒྱུར་བཞིན།...", save: "ཉར་ཚགས།", cancel: "དོར་བ།",
+  edit: "བཟོ་བཅོས།", delete: "བསུབ་པ།", add: "སྣོན་པ།",
+  enable: "སྤྱོད་འགོ།", disable: "ཆད་པ།",
+  backToBlog: "← དེབ་ཐོར་ལོག", signOut: "ཐོན་པ།",
+  adminRequired: "དོ་དམ་པའི་དབང་ཚད་དགོས།",
+  signInGithub: "GitHub ཐོག་ནས་འཛུལ།",
+  totalViews: "ལྟ་གྲངས་ཡོངས།", totalPosts: "ཡིག་སྒྲིག་གྲངས།",
+  totalComments: "མཆན་གྲངས་ཡོངས།", totalShares: "མི་མང་གཏོང་གྲངས།",
+  topViewed: "མང་ཤོས་ལྟ།", mostCommented: "མཆན་མང་ཤོས།",
+  topViewsSingle: "གཅིག་པུར་མང་ཤོས།", lastUpdated: "གསར་བཅོས་ཐ་མ།",
+  noActivityToday: "དེ་རིང་སུས་ཀྱང་ཁྱེད་ལ་གདུང་མ་བཀལ།",
+  newPost: "ཡིག་སྒྲིག་གསར་པ།", title: "མགོ་བྱང་།", slug: "Slug",
+  description: "འགྲེལ་བཤད།", published: "བསྒྲགས་ཟིན།", saving: "ཉར་བཞིན།...",
+  blogTitle: "དེབ་ཐོའི་མགོ་བྱང་།", footerText: "མཇུག་ཡིག",
+  webhookConfig: "Webhook བཀོད་སྒྲིག", emailConfig: "གློག་འཕྲིན་བཀོད་སྒྲིག",
+  notifySettings: "སྐུལ་འདེད་བཀོད་སྒྲིག", templateVars: "དཔེ་གཞི་འགྱུར་ཚིག",
+  activeConfigs: "གྲུབ་ཟིན་བཀོད་སྒྲིག", siteSettings: "དྲ་ཚིགས་བཀོད་སྒྲིག",
+  language: "སྐད་ཡིག", allColumns: "ཀུན།", column: "ཐོ།",
+  columnPlaceholder: "ཐོར་མིང་འབྲི་ནས་Enter གནོན།",
+  siteSettingsTab: "དྲ་ཚིགས་བཀོད་སྒྲིག", webhookTab: "Webhook སྐུལ་འདེད",
+  emailTab: "གློག་འཕྲིན་སྐུལ་འདེད", imageStorage: "པར་རིས་ཉར་ཚགས།",
+  dufsService: "Dufs ཞབས་ཏོག", githubImageRepo: "GitHub པར་རིས་མཛོད།",
+  expand: "རྒྱ་བསྐྱེད།", collapse: "བསྡུ་བ།",
+}
+
+const translations: Record<Locale, T> = { zh, en, mn, ug, bo, ar, ru, ja, ko }
 
 export function getTranslations(locale: Locale) {
   return translations[locale] || translations.zh
