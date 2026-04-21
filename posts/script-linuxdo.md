@@ -1,5 +1,3 @@
-# Building a “Human-like” Auto Reading Script 4 LinuxDO
-
 Sometimes you don’t want a bot that behaves like a bot.
 You want something that *feels* like a real user: scrolling, pausing, switching topics, even “thinking” for a bit.So~ I just got a new idea 4 this
 
