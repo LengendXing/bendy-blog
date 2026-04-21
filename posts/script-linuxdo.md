@@ -1,6 +1,10 @@
 Sometimes you don’t want a bot that behaves like a bot.
 You want something that *feels* like a real user: scrolling, pausing, switching topics, even “thinking” for a bit.So~ I just got a new idea 4 this
 
+![preview-1](https://qnm.hunliji.com/o_tdtxhwj8pgob3bf6a.png)
+![preview-2](https://qnm.hunliji.com/o_tdtxhwcpcxzzduhkv.png)
+![preview-3](https://qnm.hunliji.com/o_tdtxhwvtcyodf8i1i.png)
+
 This small Tampermonkey script is my attempt to simulate that behavior on the LinuxDO forum.
 
 ---
