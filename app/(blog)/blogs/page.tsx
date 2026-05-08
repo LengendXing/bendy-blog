@@ -3,6 +3,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useLocale } from "@/components/locale-provider"
 import { ColumnSelect } from "@/components/column-select"
+import { PixelLoader } from "@/components/pixel-loader"
 
 export default function BlogsPage() {
   const { t } = useLocale()
@@ -10,16 +11,29 @@ export default function BlogsPage() {
   const [columns, setColumns] = useState<any[]>([])
   const [columnId, setColumnId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [columnsLoading, setColumnsLoading] = useState(true)
 
-  useEffect(() => { fetch("/api/columns").then(r => r.json()).then(setColumns) }, [])
+  useEffect(() => {
+    fetch("/api/columns").then(r => r.json()).then(data => {
+      setColumns(data)
+      setColumnsLoading(false)
+    })
+  }, [])
 
   useEffect(() => {
     setLoading(true)
     const url = columnId ? `/api/blog?published=true&columnId=${columnId}` : `/api/blog?published=true`
-    fetch(url).then(r => r.json()).then(data => {
-      setPosts(data.filter((p: any) => p.published))
-      setLoading(false)
-    })
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        setPosts(data.filter((p: any) => p.published))
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error("Failed to fetch posts:", err)
+        setPosts([])
+        setLoading(false)
+      })
   }, [columnId])
 
   function displayDate(post: any) {
@@ -31,10 +45,12 @@ export default function BlogsPage() {
     <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
       <div className="flex items-center justify-between mb-8 sm:mb-12 gap-4 flex-wrap">
         <h1 className="font-mono text-base sm:text-lg uppercase tracking-widest">// {t.blogs}</h1>
-        <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} placeholder={t.allColumns} borderless />
+        {!columnsLoading && <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} placeholder={t.allColumns} borderless />}
       </div>
       {loading ? (
-        <div className="flex items-center justify-center h-32 font-mono text-xs">{t.loading}</div>
+        <div className="flex items-center justify-center min-h-[200px]">
+          <PixelLoader size="md" />
+        </div>
       ) : posts.length === 0 ? (
         <p className="font-body text-pixel-gray-500">{t.noPostsYet}</p>
       ) : (

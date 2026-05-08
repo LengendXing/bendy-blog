@@ -49,6 +49,16 @@ export default function ContentPage() {
     return null
   }
 
+  async function updateColumn(id: string, name: string) {
+    const res = await fetch("/api/columns", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) })
+    if (res.ok) {
+      const col = await res.json()
+      setColumns(cols => cols.map(c => c.id === id ? col : c))
+      return col
+    }
+    return null
+  }
+
   async function createPost() {
     if (!newSlug || !newTitle) return
     const res = await fetch("/api/blog", {
@@ -132,7 +142,7 @@ export default function ContentPage() {
         <div className="border-2 border-pixel-black dark:border-pixel-white p-4 mb-6 flex gap-3 items-end flex-wrap">
           <div className="flex-1 min-w-[120px]"><label className="font-mono text-xs block mb-1">{t.title}</label><Input value={newTitle} onChange={e => setNewTitle(e.target.value)} /></div>
           <div className="flex-1 min-w-[120px]"><label className="font-mono text-xs block mb-1">{t.slug}</label><Input value={newSlug} onChange={e => setNewSlug(e.target.value)} /></div>
-          <div><label className="font-mono text-xs block mb-1">{t.column}</label><ColumnSelect columns={columns} value={newColumnId} onChange={setNewColumnId} onCreate={createColumn} placeholder={t.allColumns} allowCreate /></div>
+          <div><label className="font-mono text-xs block mb-1">{t.column}</label><ColumnSelect columns={columns} value={newColumnId} onChange={setNewColumnId} onCreate={createColumn} onUpdate={updateColumn} placeholder={t.allColumns} allowCreate /></div>
           <Button onClick={createPost}>{t.add}</Button>
           <Button variant="ghost" onClick={() => { setShowNew(false); setNewTitle(""); setNewSlug(""); setNewColumnId(null) }}>{t.cancel}</Button>
         </div>

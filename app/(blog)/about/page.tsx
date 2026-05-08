@@ -3,18 +3,37 @@ import { useEffect, useState } from "react"
 import { useLocale } from "@/components/locale-provider"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { PixelLoader } from "@/components/pixel-loader"
 
 export default function AboutPage() {
   const { locale, t } = useLocale()
-  const [content, setContent] = useState<any>({})
+  const [content, setContent] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/about?locale=${locale}`).then(r => r.json()).then(setContent)
+    setLoading(true)
+    fetch(`/api/about?locale=${locale}`)
+      .then(r => r.json())
+      .then(data => {
+        setContent(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error("Failed to fetch about:", err)
+        setContent({})
+        setLoading(false)
+      })
   }, [locale])
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
       <h1 className="font-mono text-lg uppercase tracking-widest mb-12">// {t.about}</h1>
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[200px]">
+          <PixelLoader size="md" />
+        </div>
+      ) : (
+        <>
       {content.avatar && (
         <div className="mb-8">
           <img src={content.avatar} alt="avatar" className="w-24 h-24 border-2 border-pixel-black dark:border-pixel-white" />
@@ -37,6 +56,8 @@ export default function AboutPage() {
         </div>
       )}
       {!content.name && !content.markdown && <p className="font-body text-pixel-gray-500">{t.aboutNotConfigured}</p>}
+        </>
+      )}
     </div>
   )
 }

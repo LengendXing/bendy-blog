@@ -46,6 +46,16 @@ function EditContent() {
     return null
   }
 
+  async function updateColumn(id: string, name: string) {
+    const res = await fetch("/api/columns", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) })
+    if (res.ok) {
+      const col = await res.json()
+      setColumns(cols => cols.map(c => c.id === id ? col : c))
+      return col
+    }
+    return null
+  }
+
   async function save() {
     setSaving(true)
     await fetch("/api/blog", {
@@ -63,7 +73,7 @@ function EditContent() {
         <Button size="sm" variant="ghost" onClick={() => router.push("/admin/content")}>{t.backToBlog}</Button>
         <Input value={title} onChange={e => setTitle(e.target.value)} className="max-w-[180px]" placeholder={t.title} />
         <Input value={description} onChange={e => setDescription(e.target.value)} className="max-w-[180px]" placeholder={t.description} />
-        <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} onCreate={createColumn} placeholder={t.allColumns} allowCreate />
+        <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} onCreate={createColumn} onUpdate={updateColumn} placeholder={t.allColumns} allowCreate />
         <div className="flex items-center gap-1">
           <label className="font-mono text-[10px] text-pixel-gray-500">Pub Date</label>
           <input type="date" value={publishDate} onChange={e => setPublishDate(e.target.value)}
