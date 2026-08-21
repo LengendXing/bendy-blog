@@ -9,8 +9,19 @@ export async function GET(req: NextRequest) {
   const dufsUrlCfg = await prisma.siteConfig.findUnique({ where: { key: "dufsUrl" } })
   const dufsUrl = dufsUrlCfg?.value || process.env.DUFS_URL || ""
 
-  if (!dufsUrl || !url.startsWith(dufsUrl)) {
-    return NextResponse.redirect(url)
+  let target: URL
+  let base: URL
+  try {
+    target = new URL(url)
+    base = new URL(dufsUrl)
+  } catch {
+    return NextResponse.json({ error: "invalid image URL" }, { status: 400 })
+  }
+
+  const basePath = base.pathname.replace(/\/+$/, "")
+  const pathAllowed = !basePath || target.pathname === basePath || target.pathname.startsWith(`${basePath}/`)
+  if (target.protocol !== "https:" || base.protocol !== "https:" || target.username || target.password || target.origin !== base.origin || !pathAllowed) {
+    return NextResponse.json({ error: "image URL not allowed" }, { status: 403 })
   }
 
   const userCfg = await prisma.siteConfig.findUnique({ where: { key: "dufsUser" } })
@@ -23,13 +34,18 @@ export async function GET(req: NextRequest) {
     headers["Authorization"] = "Basic " + Buffer.from(`${user}:${pass}`).toString("base64")
   }
 
-  const res = await fetch(url, { headers })
+  const res = await fetch(target, { headers, redirect: "manual", cache: "no-store" })
+  if (res.status >= 300 && res.status < 400) return new NextResponse("Upstream redirect refused", { status: 502 })
   if (!res.ok) return new NextResponse("Not found", { status: 404 })
+
+  const contentType = res.headers.get("Content-Type") || ""
+  if (!contentType.toLowerCase().startsWith("image/")) return new NextResponse("Not an image", { status: 415 })
 
   return new NextResponse(res.body, {
     headers: {
-      "Content-Type": res.headers.get("Content-Type") || "image/png",
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Type": contentType,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
     },
   })
 }

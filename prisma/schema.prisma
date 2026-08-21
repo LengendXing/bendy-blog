@@ -70,6 +70,7 @@ model BlogPost {
   published   Boolean   @default(false)
   columnId    String?
   column      Column?   @relation(fields: [columnId], references: [id])
+  publishDate DateTime? // actual publish date (user-set)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   comments    Comment[]

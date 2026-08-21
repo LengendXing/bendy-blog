@@ -4,10 +4,23 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(req: NextRequest) {
+const privateResponseHeaders = {
+  "Cache-Control": "private, no-store",
+  Vary: "Cookie",
+}
+
+export async function GET() {
   const configs = await prisma.siteConfig.findMany()
   const map: Record<string, string> = {}
   for (const c of configs) map[c.key] = c.value
+
+  const session = await getServerSession(authOptions)
+  if (!(session?.user as any)?.isAdmin) {
+    return NextResponse.json({
+      blogTitle: map.blogTitle || "",
+      footerText: map.footerText || "",
+    }, { headers: privateResponseHeaders })
+  }
 
   // Merge env defaults (DB takes priority)
   const envDefaults: Record<string, string> = {
@@ -23,7 +36,7 @@ export async function GET(req: NextRequest) {
     if (!map[key] && val) map[key] = val
   }
 
-  return NextResponse.json(map)
+  return NextResponse.json(map, { headers: privateResponseHeaders })
 }
 
 export async function PUT(req: NextRequest) {

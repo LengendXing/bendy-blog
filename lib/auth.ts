@@ -1,9 +1,14 @@
 import { NextAuthOptions } from "next-auth"
 import GithubProvider from "next-auth/providers/github"
-import { PrismaAdapter } from "@auth/prisma-adapter"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "./prisma"
 
-const adminUsernames = (process.env.ADMIN_GITHUB_USERNAMES || "").split(",").map(s => s.trim())
+const adminUsernames = new Set(
+  (process.env.ADMIN_GITHUB_USERNAMES || "")
+    .split(",")
+    .map(username => username.trim().toLowerCase())
+    .filter(Boolean),
+)
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -11,6 +16,7 @@ export const authOptions: NextAuthOptions = {
     GithubProvider({
       clientId: process.env.GITHUB_ID || "",
       clientSecret: process.env.GITHUB_SECRET || "",
+      issuer: "https://github.com/login/oauth",
     }),
   ],
   callbacks: {
@@ -30,13 +36,13 @@ export const authOptions: NextAuthOptions = {
               const gh = await res.json()
               await prisma.user.update({ where: { id: user.id }, data: { githubUsername: gh.login } })
               ;(session.user as any).githubUsername = gh.login
-              ;(session.user as any).isAdmin = adminUsernames.includes(gh.login)
+              ;(session.user as any).isAdmin = adminUsernames.has(gh.login.toLowerCase())
               return session
             }
           }
         }
         ;(session.user as any).githubUsername = dbUser?.githubUsername
-        ;(session.user as any).isAdmin = adminUsernames.includes(dbUser?.githubUsername || "")
+        ;(session.user as any).isAdmin = adminUsernames.has((dbUser?.githubUsername || "").toLowerCase())
       }
       return session
     },
