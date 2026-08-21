@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Trash2, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react"
+import { Trash2, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, MessageSquare, ArrowRight } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 
 const PAGE_SIZE = 15
@@ -11,6 +11,16 @@ const PAGE_SIZE = 15
 type CommentGroup = {
   title: string
   comments: any[]
+}
+
+function commentAuthor(comment: any) {
+  return comment.user?.githubUsername || comment.user?.name || "Unknown user"
+}
+
+function replyTargetId(comment: any, commentById: Map<string, any>) {
+  if (comment.replyToId && commentById.has(comment.replyToId)) return comment.replyToId
+  if (comment.parentId && commentById.has(comment.parentId)) return comment.parentId
+  return null
 }
 
 export default function CommentsPage() {
@@ -72,6 +82,25 @@ export default function CommentsPage() {
   const entries = allEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const selectedGroup = drawerSlug ? grouped[drawerSlug] : null
 
+  const commentById = new Map<string, any>()
+  const childrenByTarget = new Map<string, any[]>()
+  if (selectedGroup) {
+    for (const comment of selectedGroup.comments) {
+      commentById.set(comment.id, comment)
+    }
+    for (const comment of selectedGroup.comments) {
+      // replyToId is the direct reply target. parentId is retained as a fallback
+      // for older comments that only recorded their top-level thread.
+      const targetId = replyTargetId(comment, commentById)
+      if (targetId) {
+        const children = childrenByTarget.get(targetId) || []
+        children.push(comment)
+        childrenByTarget.set(targetId, children)
+      }
+    }
+  }
+  const renderedComments = new Set<string>()
+
   useEffect(() => {
     if (drawerSlug && !selectedGroup) {
       setDrawerSlug(null)
@@ -95,7 +124,24 @@ export default function CommentsPage() {
     if (!confirm("Delete?")) return
     const res = await fetch("/api/comments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
     if (!res.ok) { setCommentError("Unable to delete comment"); return }
-    setComments(current => current.filter(comment => comment.id !== id))
+    setComments(current => {
+      const removed = new Set([id])
+      let changed = true
+      while (changed) {
+        changed = false
+        for (const comment of current) {
+          if (comment.parentId && removed.has(comment.parentId) && !removed.has(comment.id)) {
+            removed.add(comment.id)
+            changed = true
+          }
+        }
+      }
+      return current.filter(comment => !removed.has(comment.id))
+    })
+    if (editId === id) {
+      setEditId(null)
+      setEditContent("")
+    }
   }
 
   async function saveEdit(id: string) {
@@ -105,6 +151,62 @@ export default function CommentsPage() {
     setComments(current => current.map(comment => comment.id === id ? { ...comment, content: editContent.trim() } : comment))
     setEditId(null)
     setEditContent("")
+  }
+
+  function renderCommentTree(comment: any, depth = 0, trail = new Set<string>()): ReactNode {
+    // Keep malformed or cyclic data from preventing the rest of the drawer from rendering.
+    if (trail.has(comment.id)) return null
+    renderedComments.add(comment.id)
+    const nextTrail = new Set(trail)
+    nextTrail.add(comment.id)
+    const targetId = replyTargetId(comment, commentById)
+    const replyTarget = targetId ? commentById.get(targetId) : null
+    const children = childrenByTarget.get(comment.id) || []
+
+    return (
+      <div key={comment.id} className={depth > 0 ? "border-l-2 border-pixel-gray-300 dark:border-pixel-gray-700 pl-3 sm:pl-4" : ""}
+        style={depth > 0 ? { marginLeft: `${Math.min(depth, 6) * 0.75}rem` } : undefined}>
+        <article className="border-b-2 border-pixel-gray-200 dark:border-pixel-gray-800 pb-4">
+          {replyTarget && (
+            <div className="mb-2 flex items-center gap-1 border-l-2 border-pixel-gray-300 dark:border-pixel-gray-700 pl-2 font-mono text-[10px] uppercase tracking-wider text-pixel-gray-500 dark:text-pixel-gray-400">
+              <span>{commentAuthor(comment)}</span>
+              <ArrowRight className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span>@{commentAuthor(replyTarget)}</span>
+            </div>
+          )}
+          <div className="flex items-start gap-3">
+            {comment.user?.image && <img src={comment.user.image} alt="" className="w-7 h-7 rounded-full border shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="font-mono text-xs">{commentAuthor(comment)}</span>
+                <time className="text-[10px] text-pixel-gray-400">{new Date(comment.createdAt).toLocaleString()}</time>
+              </div>
+              {editId === comment.id ? (
+                <div className="space-y-2">
+                  <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="text-xs" rows={3} autoFocus />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => saveEdit(comment.id)} title={t.save}><Check className="w-3 h-3 mr-1" />{t.save}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setEditId(null); setEditContent("") }} title={t.cancel}><X className="w-3 h-3" /></Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="font-body text-xs text-pixel-gray-600 dark:text-pixel-gray-400 break-words whitespace-pre-wrap">{comment.content}</p>
+                  {comment.imageUrl && <img src={comment.imageUrl} alt="" className="max-h-32 border border-pixel-gray-300 mt-2" onError={e => (e.currentTarget.style.display = "none")} />}
+                </>
+              )}
+            </div>
+            {editId !== comment.id && (
+              <div className="flex gap-1 shrink-0">
+                <Button size="sm" variant="ghost" onClick={() => { setEditId(comment.id); setEditContent(comment.content); setCommentError("") }} title={t.edit} aria-label={t.edit}><Pencil className="w-3 h-3" /></Button>
+                <Button size="sm" variant="ghost" onClick={() => deleteComment(comment.id)} title={t.delete} aria-label={t.delete}><Trash2 className="w-3 h-3 text-red-500" /></Button>
+              </div>
+            )}
+          </div>
+        </article>
+        {children.map(child => renderCommentTree(child, depth + 1, nextTrail))}
+      </div>
+    )
   }
 
   if (loading) return <div className="flex items-center justify-center h-64 font-mono text-xs">{t.loading}</div>
@@ -181,39 +283,16 @@ export default function CommentsPage() {
             <div className="flex-1 overflow-y-auto p-4 sm:p-5">
               {commentError && <p className="mb-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{commentError}</p>}
               <div className="space-y-4">
-                {selectedGroup.comments.map(comment => (
-                  <article key={comment.id} className="border-b-2 border-pixel-gray-200 dark:border-pixel-gray-800 pb-4">
-                    <div className="flex items-start gap-3">
-                      {comment.user?.image && <img src={comment.user.image} alt="" className="w-7 h-7 rounded-full border shrink-0" />}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-mono text-xs">{comment.user?.githubUsername || comment.user?.name}</span>
-                          <time className="text-[10px] text-pixel-gray-400">{new Date(comment.createdAt).toLocaleString()}</time>
-                        </div>
-                        {editId === comment.id ? (
-                          <div className="space-y-2">
-                            <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="text-xs" rows={3} autoFocus />
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => saveEdit(comment.id)} title={t.save}><Check className="w-3 h-3 mr-1" />{t.save}</Button>
-                              <Button size="sm" variant="ghost" onClick={() => { setEditId(null); setEditContent("") }} title={t.cancel}><X className="w-3 h-3" /></Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="font-body text-xs text-pixel-gray-600 dark:text-pixel-gray-400 break-words whitespace-pre-wrap">{comment.content}</p>
-                            {comment.imageUrl && <img src={comment.imageUrl} alt="" className="max-h-32 border border-pixel-gray-300 mt-2" onError={e => (e.currentTarget.style.display = "none")} />}
-                          </>
-                        )}
-                      </div>
-                      {editId !== comment.id && (
-                        <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="ghost" onClick={() => { setEditId(comment.id); setEditContent(comment.content); setCommentError("") }} title={t.edit} aria-label={t.edit}><Pencil className="w-3 h-3" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => deleteComment(comment.id)} title={t.delete} aria-label={t.delete}><Trash2 className="w-3 h-3 text-red-500" /></Button>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                ))}
+                {(() => {
+                  const roots = selectedGroup.comments.filter(comment => {
+                    return !replyTargetId(comment, commentById)
+                  })
+                  const tree = roots.map(comment => {
+                    return renderCommentTree(comment)
+                  })
+                  const unlinked = selectedGroup.comments.filter(comment => !renderedComments.has(comment.id))
+                  return [...tree, ...unlinked.map(comment => renderCommentTree(comment))]
+                })()}
               </div>
             </div>
           </aside>
