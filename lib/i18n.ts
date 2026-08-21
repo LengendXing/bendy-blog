@@ -22,6 +22,7 @@ type T = {
   mostCommented: string; topViewsSingle: string; lastUpdated: string
   noActivityToday: string; newPost: string; title: string; slug: string
   description: string; published: string; saving: string; blogTitle: string
+  refreshingList: string; openingEditor: string; savedSuccessfully: string; returningToContent: string; saveFailed: string
   footerText: string; webhookConfig: string; emailConfig: string
   notifySettings: string; templateVars: string; activeConfigs: string
   siteSettings: string; language: string; allColumns: string; column: string
@@ -48,6 +49,7 @@ const zh: T = {
   noActivityToday: "没人来骚扰你",
   newPost: "新建文章", title: "标题", slug: "Slug", description: "描述",
   published: "已发布", saving: "保存中...",
+  refreshingList: "刷新文章列表...", openingEditor: "打开内容编辑器...", savedSuccessfully: "保存成功", returningToContent: "返回内容管理...", saveFailed: "保存失败",
   blogTitle: "博客标题", footerText: "底部文字",
   webhookConfig: "Webhook 配置", emailConfig: "邮件配置",
   notifySettings: "通知设置", templateVars: "模板变量",
@@ -76,6 +78,7 @@ const en: T = {
   noActivityToday: "No one bothered you today",
   newPost: "New Post", title: "Title", slug: "Slug", description: "Description",
   published: "Published", saving: "Saving...",
+  refreshingList: "Refreshing post list...", openingEditor: "Opening editor...", savedSuccessfully: "Saved", returningToContent: "Returning to content...", saveFailed: "Save failed",
   blogTitle: "Blog Title", footerText: "Footer Text",
   webhookConfig: "Webhook Config", emailConfig: "Email Config",
   notifySettings: "Notification Settings", templateVars: "Template Variables",

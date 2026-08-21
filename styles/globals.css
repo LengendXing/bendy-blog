@@ -24,6 +24,29 @@
     0 -2px 0 0 currentColor;
 }
 
+@keyframes pixel-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pixel-progress {
+  0%, 100% { opacity: 0.35; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+@keyframes pixel-drawer-in {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(0); }
+}
+
+.pixel-pop { animation: pixel-pop 180ms steps(3, end) both; }
+.pixel-drawer-in { animation: pixel-drawer-in 220ms steps(4, end) both; }
+.pixel-status-panel { box-shadow: 8px 8px 0 currentColor; }
+.pixel-progress { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; height: 12px; }
+.pixel-progress-cell { display: block; background: currentColor; opacity: 0.35; animation: pixel-progress 800ms steps(2, end) infinite; }
+.pixel-progress-cell-done { opacity: 1; animation: none; }
+
 /* Markdown content styles */
 .prose-pixel h1 { @apply font-mono text-2xl mb-6 mt-8; }
 .prose-pixel h2 { @apply font-mono text-xl mb-4 mt-6; }

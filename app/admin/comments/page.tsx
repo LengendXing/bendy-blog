@@ -1,11 +1,17 @@
 "use client"
+
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Trash2, Pencil, Check, X, Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react"
+import { Trash2, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 
 const PAGE_SIZE = 15
+
+type CommentGroup = {
+  title: string
+  comments: any[]
+}
 
 export default function CommentsPage() {
   const { t } = useLocale()
@@ -15,38 +21,90 @@ export default function CommentsPage() {
   const [editContent, setEditContent] = useState("")
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("")
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [drawerSlug, setDrawerSlug] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [commentError, setCommentError] = useState("")
 
-  useEffect(() => { fetch("/api/comments").then(r => r.json()).then(d => { setComments(d); setLoading(false) }) }, [])
+  useEffect(() => {
+    fetch("/api/comments")
+      .then(async response => {
+        const data = await response.json().catch(() => null)
+        if (!response.ok || !Array.isArray(data)) {
+          setComments([])
+          setCommentError("Unable to load comments")
+        } else {
+          setComments(data)
+        }
+        setLoading(false)
+      })
+      .catch(() => {
+        setComments([])
+        setCommentError("Unable to load comments")
+        setLoading(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    if (!drawerSlug) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") closeDrawer()
+    }
+    window.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [drawerSlug])
 
   function doSearch() { setFilter(search); setPage(1) }
 
-  const grouped = comments.reduce((acc: any, c: any) => {
-    const key = c.post?.slug || "unknown"
-    if (!acc[key]) acc[key] = { title: c.post?.title || "Unknown", comments: [] }
-    acc[key].comments.push(c)
+  const grouped = comments.reduce<Record<string, CommentGroup>>((acc, comment) => {
+    const key = comment.post?.slug || "unknown"
+    if (!acc[key]) acc[key] = { title: comment.post?.title || "Unknown", comments: [] }
+    acc[key].comments.push(comment)
     return acc
   }, {})
 
-  const allEntries = Object.entries(grouped).filter(([k, v]: any) => !filter || v.title.toLowerCase().includes(filter.toLowerCase()))
+  const allEntries = Object.entries(grouped).filter(([, group]) => !filter || group.title.toLowerCase().includes(filter.toLowerCase()))
   const totalPages = Math.max(1, Math.ceil(allEntries.length / PAGE_SIZE))
   const entries = allEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const selectedGroup = drawerSlug ? grouped[drawerSlug] : null
+
+  useEffect(() => {
+    if (drawerSlug && !selectedGroup) {
+      setDrawerSlug(null)
+      setEditId(null)
+    }
+  }, [drawerSlug, selectedGroup])
+
+  function openDrawer(slug: string) {
+    setDrawerSlug(slug)
+    setEditId(null)
+    setCommentError("")
+  }
+
+  function closeDrawer() {
+    setDrawerSlug(null)
+    setEditId(null)
+    setCommentError("")
+  }
 
   async function deleteComment(id: string) {
     if (!confirm("Delete?")) return
-    await fetch("/api/comments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
-    setComments(c => c.filter(x => x.id !== id))
+    const res = await fetch("/api/comments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+    if (!res.ok) { setCommentError("Unable to delete comment"); return }
+    setComments(current => current.filter(comment => comment.id !== id))
   }
 
   async function saveEdit(id: string) {
-    await fetch("/api/comments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, content: editContent }) })
-    setComments(c => c.map(x => x.id === id ? { ...x, content: editContent } : x))
+    if (!editContent.trim()) return
+    const res = await fetch("/api/comments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, content: editContent.trim() }) })
+    if (!res.ok) { setCommentError("Unable to save comment"); return }
+    setComments(current => current.map(comment => comment.id === id ? { ...comment, content: editContent.trim() } : comment))
     setEditId(null)
-  }
-
-  function toggleExpand(slug: string) {
-    setExpanded(prev => { const next = new Set(prev); if (next.has(slug)) next.delete(slug); else next.add(slug); return next })
+    setEditContent("")
   }
 
   if (loading) return <div className="flex items-center justify-center h-64 font-mono text-xs">{t.loading}</div>
@@ -66,70 +124,99 @@ export default function CommentsPage() {
         </button>
       </div>
 
-      {entries.map(([slug, group]: any) => {
-        const isExpanded = expanded.has(slug)
-        return (
-          <div key={slug} className="mb-6">
-            <div className="flex items-center justify-between border-b-2 border-pixel-black dark:border-pixel-white pb-2 mb-3">
-              <h2 className="font-mono text-xs uppercase tracking-wider">{group.title}</h2>
-              <div className="flex gap-1">
-                <button onClick={() => toggleExpand(slug)} title={isExpanded ? t.collapse : t.expand}
-                  className="border-2 border-pixel-black dark:border-pixel-white w-6 h-6 flex items-center justify-center font-mono text-xs hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
-                  {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                </button>
-              </div>
+      <div className="border-t-2 border-pixel-black dark:border-pixel-white">
+        {entries.map(([slug, group]) => {
+          const latest = group.comments[group.comments.length - 1]
+          return (
+            <div key={slug} className="flex items-center gap-4 border-b-2 border-pixel-black dark:border-pixel-white py-4">
+              <button onClick={() => openDrawer(slug)} className="flex min-w-0 flex-1 items-start gap-3 text-left hover:opacity-70">
+                <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-pixel-gray-500" />
+                <span className="min-w-0">
+                  <span className="block truncate font-mono text-xs uppercase tracking-wider">{group.title}</span>
+                  <span className="mt-1 block truncate font-body text-xs text-pixel-gray-500 dark:text-pixel-gray-400">
+                    {group.comments.length} {t.comments}{latest?.content ? ` · ${latest.content}` : ""}
+                  </span>
+                </span>
+              </button>
+              <button onClick={() => openDrawer(slug)} title={t.expand} aria-label={`${t.expand}: ${group.title}`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center border-2 border-pixel-black dark:border-pixel-white hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
+                <Plus className="h-4 w-4" />
+              </button>
             </div>
-            {isExpanded ? (
-              <div className="space-y-2">
-                {group.comments.map((c: any) => (
-                  <div key={c.id} className="border-2 border-pixel-gray-200 dark:border-pixel-gray-800 p-3 flex items-start gap-3">
-                    {c.user?.image && <img src={c.user.image} alt="" className="w-6 h-6 rounded-full border shrink-0" />}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-mono text-xs">{c.user?.githubUsername || c.user?.name}</span>
-                        <time className="text-xs text-pixel-gray-400">{new Date(c.createdAt).toLocaleDateString()}</time>
-                      </div>
-                      {editId === c.id ? (
-                        <div className="flex gap-2 items-end flex-wrap">
-                          <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="text-xs flex-1 min-w-[150px]" rows={2} />
-                          <Button size="sm" onClick={() => saveEdit(c.id)}><Check className="w-3 h-3" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditId(null)}><X className="w-3 h-3" /></Button>
-                        </div>
-                      ) : (
-                        <>
-                          <p className="font-body text-xs text-pixel-gray-600 dark:text-pixel-gray-400 break-all">{c.content}</p>
-                          {c.imageUrl && <img src={c.imageUrl} alt="" className="max-h-20 border border-pixel-gray-300 mt-1" onError={e => (e.currentTarget.style.display = "none")} />}
-                        </>
-                      )}
-                    </div>
-                    {editId !== c.id && (
-                      <div className="flex gap-1 shrink-0">
-                        <Button size="sm" variant="ghost" onClick={() => { setEditId(c.id); setEditContent(c.content) }}><Pencil className="w-3 h-3" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => deleteComment(c.id)}><Trash2 className="w-3 h-3 text-red-500" /></Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="font-body text-xs text-pixel-gray-400">{group.comments.length} {t.comments}</p>
-            )}
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
+
       {allEntries.length === 0 && <p className="font-body text-sm text-pixel-gray-500">{t.noComments}</p>}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 mt-6">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+          <button onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1}
             className="border-2 border-pixel-black dark:border-pixel-white w-8 h-8 flex items-center justify-center disabled:opacity-30 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="font-mono text-xs">{page} / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+          <button onClick={() => setPage(current => Math.min(totalPages, current + 1))} disabled={page === totalPages}
             className="border-2 border-pixel-black dark:border-pixel-white w-8 h-8 flex items-center justify-center disabled:opacity-30 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
             <ChevronRight className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {selectedGroup && (
+        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-labelledby="comments-drawer-title">
+          <button className="absolute inset-0 bg-pixel-black/60" onClick={closeDrawer} aria-label={t.cancel} />
+          <aside className="pixel-drawer-in absolute right-0 top-0 bottom-0 flex w-full max-w-xl flex-col border-l-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black text-pixel-black dark:text-pixel-white shadow-[-8px_0_0_#0a0a0a] dark:shadow-[-8px_0_0_#fafafa]">
+            <header className="flex items-start justify-between gap-4 border-b-2 border-pixel-black dark:border-pixel-white p-4 sm:p-5">
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-pixel-gray-500">// {t.comments}</p>
+                <h2 id="comments-drawer-title" className="mt-2 truncate font-mono text-xs uppercase tracking-wider">{selectedGroup.title}</h2>
+                <p className="mt-1 font-body text-xs text-pixel-gray-500">{selectedGroup.comments.length} {t.comments}</p>
+              </div>
+              <button onClick={closeDrawer} title={t.cancel} aria-label={t.cancel} className="p-1 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+              {commentError && <p className="mb-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{commentError}</p>}
+              <div className="space-y-4">
+                {selectedGroup.comments.map(comment => (
+                  <article key={comment.id} className="border-b-2 border-pixel-gray-200 dark:border-pixel-gray-800 pb-4">
+                    <div className="flex items-start gap-3">
+                      {comment.user?.image && <img src={comment.user.image} alt="" className="w-7 h-7 rounded-full border shrink-0" />}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-mono text-xs">{comment.user?.githubUsername || comment.user?.name}</span>
+                          <time className="text-[10px] text-pixel-gray-400">{new Date(comment.createdAt).toLocaleString()}</time>
+                        </div>
+                        {editId === comment.id ? (
+                          <div className="space-y-2">
+                            <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="text-xs" rows={3} autoFocus />
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => saveEdit(comment.id)} title={t.save}><Check className="w-3 h-3 mr-1" />{t.save}</Button>
+                              <Button size="sm" variant="ghost" onClick={() => { setEditId(null); setEditContent("") }} title={t.cancel}><X className="w-3 h-3" /></Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="font-body text-xs text-pixel-gray-600 dark:text-pixel-gray-400 break-words whitespace-pre-wrap">{comment.content}</p>
+                            {comment.imageUrl && <img src={comment.imageUrl} alt="" className="max-h-32 border border-pixel-gray-300 mt-2" onError={e => (e.currentTarget.style.display = "none")} />}
+                          </>
+                        )}
+                      </div>
+                      {editId !== comment.id && (
+                        <div className="flex gap-1 shrink-0">
+                          <Button size="sm" variant="ghost" onClick={() => { setEditId(comment.id); setEditContent(comment.content); setCommentError("") }} title={t.edit} aria-label={t.edit}><Pencil className="w-3 h-3" /></Button>
+                          <Button size="sm" variant="ghost" onClick={() => deleteComment(comment.id)} title={t.delete} aria-label={t.delete}><Trash2 className="w-3 h-3 text-red-500" /></Button>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </aside>
         </div>
       )}
     </div>

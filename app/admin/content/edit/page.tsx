@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,6 +7,7 @@ import { ColumnSelect } from "@/components/column-select"
 import { useLocale } from "@/components/locale-provider"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { PixelStatus } from "@/components/pixel-status"
 
 function EditContent() {
   const params = useSearchParams()
@@ -22,6 +23,13 @@ function EditContent() {
   const [columnId, setColumnId] = useState<string | null>(null)
   const [publishDate, setPublishDate] = useState("")
   const [saving, setSaving] = useState(false)
+  const [savedFeedback, setSavedFeedback] = useState(false)
+  const [saveError, setSaveError] = useState("")
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -57,12 +65,23 @@ function EditContent() {
   }
 
   async function save() {
+    if (saving || savedFeedback) return
     setSaving(true)
-    await fetch("/api/blog", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, title, description, content: markdown, published, columnId, publishDate: publishDate || null }),
-    })
+    setSaveError("")
+    try {
+      const res = await fetch("/api/blog", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, title, description, content: markdown, published, columnId, publishDate: publishDate || null }),
+      })
+      if (!res.ok) throw new Error("save failed")
+    } catch {
+      setSaving(false)
+      setSaveError(t.saveFailed)
+      return
+    }
     setSaving(false)
+    setSavedFeedback(true)
+    saveTimer.current = setTimeout(() => router.push("/admin/content"), 2000)
   }
 
   if (!post) return <div className="flex items-center justify-center h-64 font-mono text-xs">{t.loading}</div>
@@ -82,7 +101,8 @@ function EditContent() {
         <label className="flex items-center gap-2 font-mono text-xs">
           <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="accent-pixel-black" />{t.published}
         </label>
-        <Button size="sm" onClick={save} disabled={saving}>{saving ? t.saving : t.save}</Button>
+        <Button size="sm" onClick={save} disabled={saving || savedFeedback}>{saving ? t.saving : t.save}</Button>
+        {saveError && <span className="font-body text-xs text-red-500" role="alert">{saveError}</span>}
       </div>
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-pixel-black dark:border-pixel-white min-h-[400px] sm:min-h-[500px]">
         <textarea value={markdown} onChange={e => setMarkdown(e.target.value)}
@@ -90,6 +110,7 @@ function EditContent() {
           placeholder="Write markdown..." />
         <div className="p-3 sm:p-4 overflow-auto prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown></div>
       </div>
+      {savedFeedback && <PixelStatus success title={t.savedSuccessfully} detail={t.returningToContent} />}
     </div>
   )
 }
