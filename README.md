@@ -2,6 +2,8 @@
 
 A minimal, pixel-themed blog with admin dashboard.
 
+GitHub OAuth 登录流程说明见 [`docs/github-oauth-flow-zh.md`](docs/github-oauth-flow-zh.md)。
+
 ## Tech Stack
 
 | Layer | Tech |
