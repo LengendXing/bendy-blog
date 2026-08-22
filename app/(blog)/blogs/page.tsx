@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function BlogsPage() {
+export default async function BlogsPage({ searchParams }: { searchParams?: { q?: string } }) {
   let posts: Array<{
     slug: string
     title: string
@@ -45,6 +45,7 @@ export default async function BlogsPage() {
     <BlogsClient
       initialPosts={posts.map(post => ({ ...post, publishDate: post.publishDate?.toISOString() || null, createdAt: post.createdAt.toISOString() }))}
       initialColumns={columns}
+      initialQuery={searchParams?.q || ""}
     />
   )
 }

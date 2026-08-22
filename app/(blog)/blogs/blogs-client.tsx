@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { Search, X } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { useLocale } from "@/components/locale-provider"
 import { ColumnSelect } from "@/components/column-select"
 import { PixelLoader } from "@/components/pixel-loader"
@@ -24,15 +25,32 @@ interface ColumnSummary {
 interface Props {
   initialPosts: BlogPostSummary[]
   initialColumns: ColumnSummary[]
+  initialQuery: string
 }
 
-export default function BlogsClient({ initialPosts, initialColumns }: Props) {
+export default function BlogsClient({ initialPosts, initialColumns, initialQuery }: Props) {
   const { t } = useLocale()
   const [posts, setPosts] = useState<BlogPostSummary[]>(initialPosts)
   const [columns, setColumns] = useState<ColumnSummary[]>(initialColumns)
   const [columnId, setColumnId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [columnsLoading, setColumnsLoading] = useState(false)
+  const [query, setQuery] = useState(initialQuery)
+
+  const visiblePosts = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase()
+    if (!normalized) return posts
+    return posts.filter(post => [post.title, post.description || "", post.column?.name || ""]
+      .some(value => value.toLocaleLowerCase().includes(normalized)))
+  }, [posts, query])
+
+  function updateQuery(value: string) {
+    setQuery(value)
+    const url = new URL(window.location.href)
+    if (value.trim()) url.searchParams.set("q", value.trim())
+    else url.searchParams.delete("q")
+    window.history.replaceState(null, "", url)
+  }
 
   useEffect(() => {
     if (!columnId) {
@@ -69,17 +87,32 @@ export default function BlogsClient({ initialPosts, initialColumns }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
-      <div className="flex items-center justify-between mb-8 sm:mb-12 gap-4 flex-wrap">
+      <div className="flex items-center justify-between mb-5 sm:mb-6 gap-4 flex-wrap">
         <h1 className="font-mono text-base sm:text-lg uppercase tracking-widest">// {t.blogs}</h1>
         {!columnsLoading && <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} placeholder={t.allColumns} borderless />}
       </div>
+      <div className="flex items-center border-b-2 border-pixel-black dark:border-pixel-white mb-8 sm:mb-12">
+        <Search className="w-4 h-4 shrink-0 text-pixel-gray-400" aria-hidden="true" />
+        <input
+          value={query}
+          onChange={event => updateQuery(event.target.value)}
+          placeholder={t.searchPosts}
+          aria-label={t.searchPosts}
+          className="h-9 flex-1 bg-transparent px-2 font-body text-xs focus:outline-none"
+        />
+        {query && (
+          <button type="button" onClick={() => updateQuery("")} className="p-1 text-pixel-gray-400 hover:text-pixel-black dark:hover:text-pixel-white" aria-label={t.cancel}>
+            <X className="w-3.5 h-3.5" aria-hidden="true" />
+          </button>
+        )}
+      </div>
       {loading ? (
         <div className="flex items-center justify-center min-h-[200px]"><PixelLoader size="md" /></div>
-      ) : posts.length === 0 ? (
-        <p className="font-body text-pixel-gray-500">{t.noPostsYet}</p>
+      ) : visiblePosts.length === 0 ? (
+        <p className="font-body text-pixel-gray-500">{query.trim() ? t.noSearchResults : t.noPostsYet}</p>
       ) : (
         <div className="space-y-0">
-          {posts.map((post, index) => (
+          {visiblePosts.map((post, index) => (
             <Link key={post.slug} href={`/blogs/${encodeURIComponent(post.slug)}`} className="group block border-b-2 border-pixel-gray-200 dark:border-pixel-gray-800 py-4 sm:py-5 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900 px-3 sm:px-4 -mx-3 sm:-mx-4 transition-colors">
               <div className="flex items-baseline justify-between gap-2 sm:gap-4">
                 <div className="flex items-baseline gap-2 sm:gap-4 min-w-0">

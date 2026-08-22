@@ -8,9 +8,28 @@ import { saveFileContent, getFileContent, deleteFile } from "@/lib/github"
 export async function GET(req: NextRequest) {
   const published = req.nextUrl.searchParams.get("published")
   const columnId = req.nextUrl.searchParams.get("columnId")
-  const where: any = {}
-  if (published === "true") where.published = true
+  const session = await getServerSession(authOptions)
+  const isAdmin = Boolean((session?.user as any)?.isAdmin)
+  const where: any = { published: true }
+  if (isAdmin && published !== "true") delete where.published
   if (columnId) where.columnId = columnId
+
+  if (!isAdmin) {
+    return NextResponse.json(await prisma.blogPost.findMany({
+      where,
+      orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
+      select: {
+        slug: true,
+        title: true,
+        description: true,
+        published: true,
+        publishDate: true,
+        createdAt: true,
+        column: { select: { id: true, name: true } },
+      },
+    }))
+  }
+
   return NextResponse.json(await prisma.blogPost.findMany({
     where,
     orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],

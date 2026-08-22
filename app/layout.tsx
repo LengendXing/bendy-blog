@@ -28,6 +28,9 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
   },
+  alternates: {
+    types: { "application/rss+xml": `${siteUrl}/feed.xml` },
+  },
   robots: {
     index: true,
     follow: true,
@@ -38,7 +41,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

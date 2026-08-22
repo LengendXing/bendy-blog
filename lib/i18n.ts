@@ -29,6 +29,8 @@ type T = {
   columnPlaceholder: string; siteSettingsTab: string; webhookTab: string
   emailTab: string; imageStorage: string; dufsService: string
   githubImageRepo: string; expand: string; collapse: string
+  searchPosts: string; noSearchResults: string; previous: string; next: string
+  relatedPosts: string; copyCode: string; copied: string
 }
 
 const zh: T = {
@@ -58,6 +60,8 @@ const zh: T = {
   siteSettingsTab: "站点设置", webhookTab: "Webhook通知", emailTab: "Email通知",
   imageStorage: "图片存储", dufsService: "Dufs服务",
   githubImageRepo: "GitHub图片仓库", expand: "展开", collapse: "收起",
+  searchPosts: "搜索文章", noSearchResults: "没有匹配的文章", previous: "上一篇", next: "下一篇",
+  relatedPosts: "相关文章", copyCode: "复制代码", copied: "已复制",
 }
 
 const en: T = {
@@ -87,6 +91,8 @@ const en: T = {
   siteSettingsTab: "Site Settings", webhookTab: "Webhook Notify", emailTab: "Email Notify",
   imageStorage: "Image Storage", dufsService: "Dufs Service",
   githubImageRepo: "GitHub Image Repo", expand: "Expand", collapse: "Collapse",
+  searchPosts: "Search posts", noSearchResults: "No matching posts", previous: "Previous", next: "Next",
+  relatedPosts: "Related posts", copyCode: "Copy code", copied: "Copied",
 }
 
 const mn: T = { ...en,

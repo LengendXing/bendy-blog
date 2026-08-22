@@ -3,6 +3,21 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isRateLimited, requestIp } from "@/lib/rate-limit"
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"])
+
+function hasValidSignature(buffer: Buffer, type: string) {
+  if (type === "image/png") return buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+  if (type === "image/jpeg") return buffer.subarray(0, 3).equals(Buffer.from([255, 216, 255]))
+  if (type === "image/gif") {
+    const signature = buffer.subarray(0, 6).toString("ascii")
+    return signature === "GIF87a" || signature === "GIF89a"
+  }
+  if (type === "image/webp") return buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  return false
+}
 
 async function getDufsConfig() {
   // DB config first
@@ -39,13 +54,18 @@ async function getGithubImageConfig() {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  if (await isRateLimited(`uploads:user:${session.user.id}:${requestIp(req)}`, 20, 3600)) {
+    return NextResponse.json({ error: "too many uploads" }, { status: 429 })
+  }
 
   const formData = await req.formData()
   const file = formData.get("file") as File
   if (!file) return NextResponse.json({ error: "no file" }, { status: 400 })
-  if (!file.type.startsWith("image/")) return NextResponse.json({ error: "only images allowed" }, { status: 400 })
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) return NextResponse.json({ error: "unsupported image type" }, { status: 400 })
+  if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return NextResponse.json({ error: "image must be 5 MB or smaller" }, { status: 400 })
 
   const buffer = Buffer.from(await file.arrayBuffer())
+  if (!hasValidSignature(buffer, file.type)) return NextResponse.json({ error: "invalid image file" }, { status: 400 })
   const ext = file.type.split("/")[1] || "png"
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 

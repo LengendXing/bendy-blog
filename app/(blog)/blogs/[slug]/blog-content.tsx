@@ -1,9 +1,11 @@
 "use client"
 import { useEffect, useState, useRef, useCallback } from "react"
+import Link from "next/link"
 import { useSession, signIn } from "next-auth/react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Share2, MessageSquare, Eye, Reply, X, ImageIcon, Calendar } from "lucide-react"
+import { Children, isValidElement, type ReactNode } from "react"
+import { Share2, MessageSquare, Eye, Reply, X, ImageIcon, Calendar, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLocale } from "@/components/locale-provider"
 
@@ -17,6 +19,43 @@ interface Props {
   post: { id: string; slug: string; title: string; views: number; shares: number; publishDate: string | null; updatedAt: string }
   markdown: string
   initialComments: CommentData[]
+  navigation: {
+    previous: { slug: string; title: string } | null
+    next: { slug: string; title: string } | null
+  }
+  related: Array<{ slug: string; title: string }>
+}
+
+function MarkdownPre({ children }: { children?: ReactNode }) {
+  const { t } = useLocale()
+  const [copied, setCopied] = useState(false)
+  const child = Children.toArray(children).find(isValidElement) as React.ReactElement<{ children?: ReactNode }> | undefined
+  const code = child ? String(child.props.children || "").replace(/\n$/, "") : ""
+
+  async function copyCode() {
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {}
+  }
+
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={copyCode}
+        className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 border border-pixel-gray-400 bg-pixel-gray-100 px-2 py-1 font-mono text-[9px] text-pixel-black opacity-70 hover:opacity-100 dark:border-pixel-gray-600 dark:bg-pixel-gray-800 dark:text-pixel-white"
+        aria-label={copied ? t.copied : t.copyCode}
+        title={copied ? t.copied : t.copyCode}
+      >
+        {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
+        <span className="sr-only">{copied ? t.copied : t.copyCode}</span>
+      </button>
+      <pre>{children}</pre>
+    </div>
+  )
 }
 
 function Linkified({ text }: { text: string }) {
@@ -83,7 +122,7 @@ function CommentBox({ postId, parentId, replyToId, replyToName, onPosted, onCanc
           {onCancel && <button onClick={onCancel}><X className="w-3 h-3" /></button>}
         </div>
       )}
-      <textarea value={content} onChange={e => setContent(e.target.value)} onPaste={handlePaste}
+      <textarea value={content} maxLength={4000} onChange={e => setContent(e.target.value)} onPaste={handlePaste}
         placeholder={t.writeComment}
         className="w-full border-2 border-pixel-black dark:border-pixel-white bg-transparent px-3 py-2 text-xs font-body focus:outline-none resize-y min-h-[60px]" rows={2} />
       {uploading && <p className="font-mono text-[10px] text-pixel-gray-400 mt-1">Uploading...</p>}
@@ -138,7 +177,7 @@ function CommentItem({ comment, allComments, postId, onNewReply, depth = 0 }: {
   )
 }
 
-export function BlogContent({ post, markdown, initialComments }: Props) {
+export function BlogContent({ post, markdown, initialComments, navigation, related }: Props) {
   const { data: session } = useSession()
   const { t } = useLocale()
   const [comments, setComments] = useState(initialComments)
@@ -178,7 +217,41 @@ export function BlogContent({ post, markdown, initialComments }: Props) {
             Updated {updDate.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}
           </span>
         </div>
-        <div className="prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown></div>
+        <div className="prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: MarkdownPre }}>{markdown}</ReactMarkdown></div>
+
+        {(navigation.previous || navigation.next) && (
+          <nav className="mt-10 grid grid-cols-2 gap-3 border-t-2 border-pixel-black pt-4 dark:border-pixel-white" aria-label="Article navigation">
+            <div>
+              {navigation.previous && (
+                <Link href={`/blogs/${encodeURIComponent(navigation.previous.slug)}`} className="group block">
+                  <span className="font-mono text-[10px] text-pixel-gray-400">← {t.previous}</span>
+                  <span className="mt-1 block truncate font-body text-xs group-hover:underline">{navigation.previous.title}</span>
+                </Link>
+              )}
+            </div>
+            <div className="text-right">
+              {navigation.next && (
+                <Link href={`/blogs/${encodeURIComponent(navigation.next.slug)}`} className="group block">
+                  <span className="font-mono text-[10px] text-pixel-gray-400">{t.next} →</span>
+                  <span className="mt-1 block truncate font-body text-xs group-hover:underline">{navigation.next.title}</span>
+                </Link>
+              )}
+            </div>
+          </nav>
+        )}
+
+        {related.length > 0 && (
+          <section className="mt-10 border-t-2 border-pixel-gray-300 pt-5 dark:border-pixel-gray-700">
+            <h2 className="mb-3 font-mono text-xs uppercase tracking-widest">// {t.relatedPosts}</h2>
+            <div className="space-y-2">
+              {related.map(item => (
+                <Link key={item.slug} href={`/blogs/${encodeURIComponent(item.slug)}`} className="block truncate font-body text-xs hover:underline">
+                  {item.title}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </article>
 
       <aside className="lg:w-72 xl:w-80 shrink-0 border-t-2 lg:border-t-0 lg:border-l-2 border-pixel-black dark:border-pixel-white lg:pl-6 xl:lg:pl-8 pt-6 lg:pt-0">

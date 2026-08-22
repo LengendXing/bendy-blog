@@ -22,6 +22,22 @@ async function getPost(slug: string) {
   })
 }
 
+async function getPostContext(post: Awaited<ReturnType<typeof getPost>>) {
+  if (!post) return { previous: null, next: null, related: [] }
+  const posts = await prisma.blogPost.findMany({
+    where: { published: true },
+    orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
+    select: { id: true, slug: true, title: true, columnId: true, publishDate: true, createdAt: true },
+  })
+  const index = posts.findIndex(item => item.id === post.id)
+  const previous = index >= 0 && posts[index + 1] ? posts[index + 1] : null
+  const next = index > 0 ? posts[index - 1] : null
+  const sameColumn = post.columnId
+    ? posts.filter(item => item.id !== post.id && item.columnId === post.columnId)
+    : []
+  return { previous, next, related: sameColumn.slice(0, 3) }
+}
+
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
   const slug = decodeURIComponent(params.slug)
   const post = await getPost(slug)
@@ -52,6 +68,7 @@ export default async function BlogPostPage({ params }: PageParams) {
   const slug = decodeURIComponent(params.slug)
   const post = await getPost(slug)
   if (!post || !post.published) notFound()
+  const context = await getPostContext(post)
 
   let markdown = ""
   const file = await getFileContent(post.githubPath)
@@ -88,6 +105,8 @@ export default async function BlogPostPage({ params }: PageParams) {
         }}
         markdown={markdown}
         initialComments={serialized}
+        navigation={{ previous: context.previous, next: context.next }}
+        related={context.related}
       />
     </>
   )
