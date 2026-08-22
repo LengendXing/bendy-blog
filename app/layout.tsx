@@ -57,6 +57,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <link rel="alternate" type="application/rss+xml" title="Bendy Blog RSS" href="/feed.xml" />
+      </head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd).replace(/</g, "\\u003c") }} />
         <AuthSessionProvider>
