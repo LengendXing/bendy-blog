@@ -67,5 +67,25 @@
 .prose-pixel a { @apply underline underline-offset-2 hover:decoration-2; }
 .prose-pixel img { @apply border-2 border-pixel-black dark:border-pixel-white my-4; }
 .prose-pixel hr { @apply border-pixel-black dark:border-pixel-white my-8; }
-.prose-pixel table { @apply w-full border-collapse mb-4; }
-.prose-pixel th, .prose-pixel td { @apply border-2 border-pixel-black dark:border-pixel-white p-2 text-left text-sm; }
+.prose-table-scroll {
+  max-width: 100%;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.prose-pixel table {
+  width: max-content;
+  min-width: 100%;
+  margin-bottom: 0;
+  border-collapse: collapse;
+  font-family: "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.prose-pixel th, .prose-pixel td {
+  @apply border-2 border-pixel-black dark:border-pixel-white p-2 text-left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

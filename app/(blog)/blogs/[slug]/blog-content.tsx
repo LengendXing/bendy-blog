@@ -8,6 +8,7 @@ import { Children, isValidElement, type ReactNode } from "react"
 import { Share2, MessageSquare, Eye, Reply, X, ImageIcon, Calendar, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLocale } from "@/components/locale-provider"
+import { MarkdownTable } from "@/components/markdown-table"
 
 interface CommentData {
   id: string; content: string; imageUrl?: string | null; parentId?: string | null; replyToId?: string | null
@@ -217,7 +218,7 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
             Updated {updDate.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}
           </span>
         </div>
-        <div className="prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: MarkdownPre }}>{markdown}</ReactMarkdown></div>
+        <div className="prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: MarkdownPre, table: MarkdownTable }}>{markdown}</ReactMarkdown></div>
 
         {(navigation.previous || navigation.next) && (
           <nav className="mt-10 grid grid-cols-2 gap-3 border-t-2 border-pixel-black pt-4 dark:border-pixel-white" aria-label="Article navigation">
@@ -254,7 +255,7 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
         )}
       </article>
 
-      <aside className="lg:w-72 xl:w-80 shrink-0 border-t-2 lg:border-t-0 lg:border-l-2 border-pixel-black dark:border-pixel-white lg:pl-6 xl:lg:pl-8 pt-6 lg:pt-0">
+      <aside className="lg:w-72 xl:w-80 shrink-0 border-t-2 lg:border-t-0 lg:border-l-2 border-pixel-black dark:border-pixel-white lg:pl-6 xl:lg:pl-8 pt-6 lg:pt-0 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain">
         <h2 className="font-mono text-xs uppercase tracking-widest mb-4 sm:mb-6">// {t.comments}</h2>
         {session ? (
           <CommentBox postId={post.id} onPosted={c => setComments(prev => [...prev, c])} />
