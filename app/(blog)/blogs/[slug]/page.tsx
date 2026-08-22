@@ -30,21 +30,21 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
   const description = post.description?.trim() || `${post.title}，来自笨迪博客 BendyBlog 的码农修炼笔记。`
   const url = `${siteUrl}/blogs/${encodeURIComponent(post.slug)}`
   return {
-    title: post.title,
+    title: "Bendy Blog",
     description,
     keywords: ["笨迪博客", "BendyBlog", "码农修炼笔记", post.title, post.column?.name].filter(Boolean) as string[],
     alternates: { canonical: url },
     openGraph: {
       type: "article",
       url,
-      title: `${post.title} | 笨迪博客 BendyBlog`,
+      title: "Bendy Blog",
       description,
       publishedTime: post.publishDate?.toISOString() || post.createdAt.toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
       authors: ["笨迪"],
       section: post.column?.name,
     },
-    twitter: { card: "summary", title: `${post.title} | 笨迪博客 BendyBlog`, description },
+    twitter: { card: "summary", title: "Bendy Blog", description },
   }
 }
 

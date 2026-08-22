@@ -1,13 +1,13 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "项目与开源实践",
+  title: "Bendy Blog",
   description: "笨迪博客 BendyBlog 的项目作品、开源实践与工程实验记录。",
   alternates: { canonical: "/projects" },
   openGraph: {
     type: "website",
     url: "/projects",
-    title: "项目与开源实践 | 笨迪博客 BendyBlog",
+    title: "Bendy Blog",
     description: "笨迪博客 BendyBlog 的项目作品、开源实践与工程实验记录。",
   },
 }

@@ -5,13 +5,13 @@ import BlogsClient from "./blogs-client"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "技术文章与码农修炼笔记",
+  title: "Bendy Blog",
   description: "浏览笨迪博客 BendyBlog 的技术文章，涵盖 Java、后端开发、机器学习、深度学习、算法与工程实践。",
   alternates: { canonical: "/blogs" },
   openGraph: {
     type: "website",
     url: "/blogs",
-    title: "技术文章与码农修炼笔记 | 笨迪博客 BendyBlog",
+    title: "Bendy Blog",
     description: "浏览笨迪博客 BendyBlog 的技术文章，涵盖 Java、后端开发、机器学习、深度学习、算法与工程实践。",
   },
 }
