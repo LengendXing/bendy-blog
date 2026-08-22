@@ -4,6 +4,7 @@ import { useLocale } from "@/components/locale-provider"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { PixelLoader } from "@/components/pixel-loader"
+import { MarkdownTable } from "@/components/markdown-table"
 
 export default function AboutPage() {
   const { locale, t } = useLocale()
@@ -52,7 +53,7 @@ export default function AboutPage() {
       )}
       {content.markdown && (
         <div className="prose-pixel">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.markdown}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ table: MarkdownTable }}>{content.markdown}</ReactMarkdown>
         </div>
       )}
       {!content.name && !content.markdown && <p className="font-body text-pixel-gray-500">{t.aboutNotConfigured}</p>}
