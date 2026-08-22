@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFileContent, getFileContent, deleteFile } from "@/lib/github"
+import { sortPostsByEffectiveDate } from "@/lib/post-order"
 
 export async function GET(req: NextRequest) {
   const published = req.nextUrl.searchParams.get("published")
@@ -15,9 +16,9 @@ export async function GET(req: NextRequest) {
   if (columnId) where.columnId = columnId
 
   if (!isAdmin) {
-    return NextResponse.json(await prisma.blogPost.findMany({
+    const posts = await prisma.blogPost.findMany({
       where,
-      orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
+      orderBy: { createdAt: "desc" },
       select: {
         slug: true,
         title: true,
@@ -27,14 +28,16 @@ export async function GET(req: NextRequest) {
         createdAt: true,
         column: { select: { id: true, name: true } },
       },
-    }))
+    })
+    return NextResponse.json(sortPostsByEffectiveDate(posts))
   }
 
-  return NextResponse.json(await prisma.blogPost.findMany({
+  const posts = await prisma.blogPost.findMany({
     where,
-    orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
+    orderBy: { createdAt: "desc" },
     include: { _count: { select: { comments: true } }, column: true },
-  }))
+  })
+  return NextResponse.json(sortPostsByEffectiveDate(posts))
 }
 
 export async function POST(req: NextRequest) {

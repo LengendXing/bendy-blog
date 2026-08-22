@@ -3,6 +3,7 @@ import { getFileContent } from "@/lib/github"
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { BlogContent } from "./blog-content"
+import { sortPostsByEffectiveDate } from "@/lib/post-order"
 
 export const revalidate = 60
 const siteUrl = "https://blog.sunchengxin.com"
@@ -26,14 +27,15 @@ async function getPostContext(post: Awaited<ReturnType<typeof getPost>>) {
   if (!post) return { previous: null, next: null, related: [] }
   const posts = await prisma.blogPost.findMany({
     where: { published: true },
-    orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
+    orderBy: { createdAt: "desc" },
     select: { id: true, slug: true, title: true, columnId: true, publishDate: true, createdAt: true },
   })
-  const index = posts.findIndex(item => item.id === post.id)
-  const previous = index >= 0 && posts[index + 1] ? posts[index + 1] : null
-  const next = index > 0 ? posts[index - 1] : null
+  const orderedPosts = sortPostsByEffectiveDate(posts)
+  const index = orderedPosts.findIndex(item => item.id === post.id)
+  const previous = index >= 0 && orderedPosts[index + 1] ? orderedPosts[index + 1] : null
+  const next = index > 0 ? orderedPosts[index - 1] : null
   const sameColumn = post.columnId
-    ? posts.filter(item => item.id !== post.id && item.columnId === post.columnId)
+    ? orderedPosts.filter(item => item.id !== post.id && item.columnId === post.columnId)
     : []
   return { previous, next, related: sameColumn.slice(0, 3) }
 }

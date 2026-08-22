@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma"
+import { sortPostsByEffectiveDate } from "@/lib/post-order"
 
 const siteUrl = "https://blog.sunchengxin.com"
-export const revalidate = 3600
+// Keep the subscription fresh while still allowing Vercel to cache it.
+export const revalidate = 300
 
 function escapeXml(value: string) {
   return value
@@ -23,12 +25,11 @@ export async function GET() {
   }> = []
 
   try {
-    posts = await prisma.blogPost.findMany({
+    posts = sortPostsByEffectiveDate(await prisma.blogPost.findMany({
       where: { published: true },
-      orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
-      take: 50,
+      orderBy: { createdAt: "desc" },
       select: { slug: true, title: true, description: true, publishDate: true, createdAt: true, updatedAt: true },
-    })
+    }))
   } catch {
     // Keep the feed valid even when the database is temporarily unavailable.
   }
@@ -48,10 +49,11 @@ export async function GET() {
   }).join("")
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Bendy Blog</title>
     <link>${siteUrl}/blogs</link>
+    <atom:link href="${siteUrl}/feed.xml" rel="self" type="application/rss+xml" />
     <description>笨迪博客 BendyBlog 的码农修炼笔记。</description>
     <language>zh-CN</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>${items}
@@ -61,7 +63,7 @@ export async function GET() {
   return new Response(xml, {
     headers: {
       "Content-Type": "application/rss+xml; charset=utf-8",
-      "Cache-Control": "public, max-age=3600, s-maxage=3600",
+      "Cache-Control": "public, max-age=300, s-maxage=300",
     },
   })
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { prisma } from "@/lib/prisma"
+import { sortPostsByEffectiveDate } from "@/lib/post-order"
 import BlogsClient from "./blogs-client"
 
 export const dynamic = "force-dynamic"
@@ -32,7 +33,7 @@ export default async function BlogsPage({ searchParams }: { searchParams?: { q?:
     ;[posts, columns] = await Promise.all([
       prisma.blogPost.findMany({
         where: { published: true },
-        orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
+        orderBy: { createdAt: "desc" },
         select: { slug: true, title: true, description: true, published: true, publishDate: true, createdAt: true, column: { select: { id: true, name: true } } },
       }),
       prisma.column.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -41,9 +42,11 @@ export default async function BlogsPage({ searchParams }: { searchParams?: { q?:
     // The client still renders the empty state if the database is temporarily unavailable.
   }
 
+  const orderedPosts = sortPostsByEffectiveDate(posts)
+
   return (
     <BlogsClient
-      initialPosts={posts.map(post => ({ ...post, publishDate: post.publishDate?.toISOString() || null, createdAt: post.createdAt.toISOString() }))}
+      initialPosts={orderedPosts.map(post => ({ ...post, publishDate: post.publishDate?.toISOString() || null, createdAt: post.createdAt.toISOString() }))}
       initialColumns={columns}
       initialQuery={searchParams?.q || ""}
     />
