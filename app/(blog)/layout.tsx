@@ -11,7 +11,9 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { fetch("/api/config").then(r => r.json()).then(setConfig).catch(() => {}) }, [])
 
-  const blogTitle = config.blogTitle || "BENDY BLOG"
+  const blogTitle = !config.blogTitle || config.blogTitle.trim().toUpperCase() === "BENDY BLOG"
+    ? "笨迪博客 BendyBlog | 码农修炼笔记"
+    : config.blogTitle
   const footerText = config.footerText || "Built with nextjs & By @SunChengXin"
 
   return (

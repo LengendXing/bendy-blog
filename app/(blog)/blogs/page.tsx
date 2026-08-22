@@ -1,77 +1,50 @@
-"use client"
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import { useLocale } from "@/components/locale-provider"
-import { ColumnSelect } from "@/components/column-select"
-import { PixelLoader } from "@/components/pixel-loader"
+import type { Metadata } from "next"
+import { prisma } from "@/lib/prisma"
+import BlogsClient from "./blogs-client"
 
-export default function BlogsPage() {
-  const { t } = useLocale()
-  const [posts, setPosts] = useState<any[]>([])
-  const [columns, setColumns] = useState<any[]>([])
-  const [columnId, setColumnId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [columnsLoading, setColumnsLoading] = useState(true)
+export const dynamic = "force-dynamic"
 
-  useEffect(() => {
-    fetch("/api/columns").then(r => r.json()).then(data => {
-      setColumns(data)
-      setColumnsLoading(false)
-    })
-  }, [])
+export const metadata: Metadata = {
+  title: "技术文章与码农修炼笔记",
+  description: "浏览笨迪博客 BendyBlog 的技术文章，涵盖 Java、后端开发、机器学习、深度学习、算法与工程实践。",
+  alternates: { canonical: "/blogs" },
+  openGraph: {
+    type: "website",
+    url: "/blogs",
+    title: "技术文章与码农修炼笔记 | 笨迪博客 BendyBlog",
+    description: "浏览笨迪博客 BendyBlog 的技术文章，涵盖 Java、后端开发、机器学习、深度学习、算法与工程实践。",
+  },
+}
 
-  useEffect(() => {
-    setLoading(true)
-    const url = columnId ? `/api/blog?published=true&columnId=${columnId}` : `/api/blog?published=true`
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        setPosts(data.filter((p: any) => p.published))
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error("Failed to fetch posts:", err)
-        setPosts([])
-        setLoading(false)
-      })
-  }, [columnId])
+export default async function BlogsPage() {
+  let posts: Array<{
+    slug: string
+    title: string
+    description: string | null
+    published: boolean
+    publishDate: Date | null
+    createdAt: Date
+    column: { id: string; name: string } | null
+  }> = []
+  let columns: Array<{ id: string; name: string }> = []
 
-  function displayDate(post: any) {
-    const d = post.publishDate || post.createdAt
-    return new Date(d).toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })
+  try {
+    ;[posts, columns] = await Promise.all([
+      prisma.blogPost.findMany({
+        where: { published: true },
+        orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
+        select: { slug: true, title: true, description: true, published: true, publishDate: true, createdAt: true, column: { select: { id: true, name: true } } },
+      }),
+      prisma.column.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    ])
+  } catch {
+    // The client still renders the empty state if the database is temporarily unavailable.
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
-      <div className="flex items-center justify-between mb-8 sm:mb-12 gap-4 flex-wrap">
-        <h1 className="font-mono text-base sm:text-lg uppercase tracking-widest">// {t.blogs}</h1>
-        {!columnsLoading && <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} placeholder={t.allColumns} borderless />}
-      </div>
-      {loading ? (
-        <div className="flex items-center justify-center min-h-[200px]">
-          <PixelLoader size="md" />
-        </div>
-      ) : posts.length === 0 ? (
-        <p className="font-body text-pixel-gray-500">{t.noPostsYet}</p>
-      ) : (
-        <div className="space-y-0">
-          {posts.map((post: any, i: number) => (
-            <Link key={post.slug} href={`/blogs/${post.slug}`} className="group block border-b-2 border-pixel-gray-200 dark:border-pixel-gray-800 py-4 sm:py-5 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900 px-3 sm:px-4 -mx-3 sm:-mx-4 transition-colors">
-              <div className="flex items-baseline justify-between gap-2 sm:gap-4">
-                <div className="flex items-baseline gap-2 sm:gap-4 min-w-0">
-                  <span className="font-mono text-xs text-pixel-gray-400 shrink-0">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="font-body text-sm group-hover:underline underline-offset-4 truncate">{post.title}</span>
-                  {post.column && <span className="font-mono text-[10px] text-pixel-gray-400 border border-pixel-gray-300 dark:border-pixel-gray-700 px-1 shrink-0 hidden sm:inline">{post.column.name}</span>}
-                </div>
-                <time className="font-mono text-[10px] sm:text-xs text-pixel-gray-400 shrink-0">
-                  {displayDate(post)}
-                </time>
-              </div>
-              {post.description && <p className="font-body text-xs text-pixel-gray-500 mt-1 ml-6 sm:ml-8 truncate">{post.description}</p>}
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+    <BlogsClient
+      initialPosts={posts.map(post => ({ ...post, publishDate: post.publishDate?.toISOString() || null, createdAt: post.createdAt.toISOString() }))}
+      initialColumns={columns}
+    />
   )
 }

@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<"site" | "webhook" | "email">("site")
   const [loading, setLoading] = useState(true)
 
-  const [blogTitle, setBlogTitle] = useState("BENDY BLOG")
+  const [blogTitle, setBlogTitle] = useState("笨迪博客 BendyBlog | 码农修炼笔记")
   const [footerText, setFooterText] = useState("Built with nextjs & By @SunChengXin")
   const [dufsEnabled, setDufsEnabled] = useState(false)
   const [dufsUrl, setDufsUrl] = useState("")
@@ -52,7 +52,7 @@ export default function SettingsPage() {
       fetch("/api/config").then(r => r.json()),
       fetch("/api/notify").then(r => r.json()),
     ]).then(([cfg, notifs]) => {
-      if (cfg.blogTitle) setBlogTitle(cfg.blogTitle)
+      if (cfg.blogTitle && cfg.blogTitle.trim().toUpperCase() !== "BENDY BLOG") setBlogTitle(cfg.blogTitle)
       if (cfg.footerText) setFooterText(cfg.footerText)
       setDufsEnabled(cfg.dufsEnabled === "true")
       if (cfg.dufsUrl) setDufsUrl(cfg.dufsUrl)
