@@ -87,7 +87,7 @@ export default function ProjectsAdminPage() {
 
   return (
     <div className="relative min-h-[360px] overflow-hidden" aria-busy={Boolean(action)}>
-      {action && <AdminLoading size="sm" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
+      {action && <AdminLoading size="md" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.projectsMgmt}</h1>
       {actionError && <p className="mb-4 font-body text-xs text-red-500" role="alert">{actionError}</p>}
 

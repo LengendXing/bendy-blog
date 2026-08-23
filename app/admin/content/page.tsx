@@ -180,7 +180,7 @@ export default function ContentPage() {
 
   return (
     <div className="relative min-h-[360px] overflow-hidden" aria-busy={deletingPost}>
-      {deletingPost && <AdminLoading size="sm" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
+      {deletingPost && <AdminLoading size="md" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h1 className="font-mono text-sm uppercase tracking-widest">// {t.content}</h1>
         <div className="flex gap-2">
@@ -202,7 +202,7 @@ export default function ContentPage() {
 
       {showImport && (
         <div className="relative min-h-[150px] overflow-hidden border-2 border-pixel-black p-4 mb-6 dark:border-pixel-white" aria-busy={importing}>
-          {importing && <AdminLoading size="sm" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
+          {importing && <AdminLoading size="md" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
           <h3 className="font-mono text-xs uppercase mb-3">Batch Import (Notion Markdown)</h3>
           <p className="font-body text-xs text-pixel-gray-500 mb-3">Select .md files. Format: # Title, metadata, blank line, body.</p>
           <div className="flex items-center gap-3 flex-wrap">
@@ -231,7 +231,7 @@ export default function ContentPage() {
           <form onSubmit={createPost} className="pixel-pop relative min-h-[360px] w-full max-w-xl overflow-hidden border-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black p-5 sm:p-6 text-pixel-black dark:text-pixel-white shadow-[8px_8px_0_currentColor]" aria-busy={columnAction}>
             {columnAction && (
               <AdminLoading
-                size="sm"
+                size="md"
                 className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
               />
             )}

@@ -131,7 +131,7 @@ function EditContent() {
     <div className="relative flex h-full min-h-[520px] flex-col overflow-hidden" aria-busy={columnAction}>
       {columnAction && (
         <AdminLoading
-          size="sm"
+          size="md"
           className="absolute inset-0 z-30 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
         />
       )}

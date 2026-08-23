@@ -56,7 +56,7 @@ export default function AboutAdminPage() {
 
   return (
     <div className="relative max-w-2xl overflow-hidden" aria-busy={saving}>
-      {saving && <AdminLoading size="sm" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
+      {saving && <AdminLoading size="md" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.aboutPage}</h1>
 
       <div className="flex gap-1 mb-6 flex-wrap">
@@ -71,7 +71,7 @@ export default function AboutAdminPage() {
       </div>
 
       {loading ? (
-        <AdminLoading size="sm" className="min-h-32" />
+        <AdminLoading size="md" className="min-h-32" />
       ) : (
         <div className="space-y-4">
           <div><label className="font-mono text-xs block mb-1">{t.title} ({localeNames[activeLocale]})</label><Input value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} /></div>

@@ -28,7 +28,7 @@ export function PixelStatus({ title, detail, success = false }: PixelStatusProps
           </>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <PixelLoader size="sm" framed />
+            <PixelLoader size="md" framed />
             <div>
               <p className="font-mono text-[10px] uppercase tracking-wider">{title}</p>
               {detail && <p className="mt-2 font-body text-xs text-pixel-gray-500 dark:text-pixel-gray-400">{detail}</p>}

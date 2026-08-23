@@ -142,7 +142,7 @@ export function PixelLoader({ size = "md", framed = false }: Props) {
               ? `max-w-full font-mono text-pixel-gray-500 dark:text-pixel-gray-400 tracking-normal ${size === "sm" ? "text-[6px]" : size === "md" ? "text-[8px]" : "text-[9px]"}`
               : "whitespace-nowrap font-mono text-[9px] tracking-wide text-pixel-gray-500 dark:text-pixel-gray-400"
             }>
-              More interest, less utility
+              More interest Less interests
             </p>
           </div>
         </div>

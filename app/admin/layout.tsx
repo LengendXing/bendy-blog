@@ -25,7 +25,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     { href: "/admin/settings", label: t.settings, icon: Bell },
   ]
 
-  if (status === "loading") return <AdminLoading size="sm" className="min-h-screen" />
+  if (status === "loading") return <AdminLoading size="md" className="min-h-screen" />
   if (!session || !(session.user as any)?.isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">

@@ -9,7 +9,7 @@ interface AdminLoadingProps {
 }
 
 /** Stable loading surface for admin pages and panels. */
-export function AdminLoading({ size = "sm", className }: AdminLoadingProps) {
+export function AdminLoading({ size = "md", className }: AdminLoadingProps) {
   return (
     <div
       className={cn(

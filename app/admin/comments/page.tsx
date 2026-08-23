@@ -290,7 +290,7 @@ export default function CommentsPage() {
           <aside className="pixel-drawer-in absolute right-0 top-0 bottom-0 flex w-full max-w-xl flex-col overflow-hidden border-l-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black text-pixel-black dark:text-pixel-white shadow-[-8px_0_0_#0a0a0a] dark:shadow-[-8px_0_0_#fafafa]" aria-busy={Boolean(commentAction)}>
             {commentAction && (
               <AdminLoading
-                size="sm"
+                size="md"
                 className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
               />
             )}

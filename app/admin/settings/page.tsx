@@ -391,7 +391,7 @@ export default function SettingsPage() {
         <div className="relative min-h-[360px] max-w-2xl overflow-hidden" aria-busy={savingSite}>
           {savingSite && (
             <AdminLoading
-              size="sm"
+              size="md"
               className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
             />
           )}
@@ -437,7 +437,7 @@ export default function SettingsPage() {
         <div className="relative min-h-[360px] max-w-2xl overflow-hidden" aria-busy={Boolean(notificationAction)}>
           {notificationAction && (
             <AdminLoading
-              size="sm"
+              size="md"
               className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
             />
           )}
@@ -465,7 +465,7 @@ export default function SettingsPage() {
         <div className="relative min-h-[360px] max-w-2xl overflow-hidden" aria-busy={Boolean(notificationAction)}>
           {notificationAction && (
             <AdminLoading
-              size="sm"
+              size="md"
               className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
             />
           )}
@@ -485,7 +485,7 @@ export default function SettingsPage() {
         <div className="relative min-h-[360px] max-w-2xl overflow-hidden" aria-busy={Boolean(adminAction)}>
           {adminAction && (
             <AdminLoading
-              size="sm"
+              size="md"
               className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
             />
           )}
