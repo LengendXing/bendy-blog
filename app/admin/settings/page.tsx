@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { PixelLoader } from "@/components/pixel-loader"
 import { Trash2, Plus, Eye, EyeOff, ExternalLink, Github, Pencil, Search, UserPlus, X } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 
@@ -46,7 +47,7 @@ function SecretInput({ value, onChange, placeholder, disabled }: {
 
 export default function SettingsPage() {
   const { t } = useLocale()
-  const { data: session, update: updateSession } = useSession()
+  const { data: session } = useSession()
   const [configs, setConfigs] = useState<any[]>([])
   const [tab, setTab] = useState<"site" | "webhook" | "email" | "admins">("site")
   const [loading, setLoading] = useState(true)
@@ -289,7 +290,6 @@ export default function SettingsPage() {
       setGithubQuery("")
       setGithubResults([])
       githubSearchCache.current.clear()
-      await updateSession().catch(() => undefined)
     } catch (error) {
       const code = (error as Error).message
       if (code === "admin_config_conflict") await loadAdmins({ preserveError: true })
@@ -319,7 +319,6 @@ export default function SettingsPage() {
         || replaceAdmin?.username.toLowerCase() === admin.username.toLowerCase()
       ) setReplaceAdmin(null)
       githubSearchCache.current.clear()
-      await updateSession().catch(() => undefined)
     } catch (error) {
       const code = (error as Error).message
       if (code === "admin_config_conflict") await loadAdmins({ preserveError: true })
@@ -417,7 +416,12 @@ export default function SettingsPage() {
       )}
 
       {tab === "admins" && (
-        <div className="max-w-2xl space-y-6">
+        <div className="relative max-w-2xl space-y-6" aria-busy={Boolean(adminAction)}>
+          {adminAction && (
+            <div className="absolute inset-0 z-20 flex min-h-[360px] items-center justify-center bg-pixel-white/90 px-4 backdrop-blur-[1px] dark:bg-pixel-black/90" role="status" aria-live="polite">
+              <PixelLoader size="sm" />
+            </div>
+          )}
           <section className="border-2 border-pixel-black p-4 dark:border-pixel-white">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-mono text-xs uppercase">{t.githubUserSearch}</h2>
