@@ -31,6 +31,12 @@ type T = {
   githubImageRepo: string; expand: string; collapse: string
   searchPosts: string; noSearchResults: string; previous: string; next: string
   relatedPosts: string; copyCode: string; copied: string
+  adminSettingsTab: string; githubUserSearch: string; githubUsernamePlaceholder: string
+  currentAdmins: string; noAdmins: string; noGithubUsers: string
+  githubSearchFailed: string; githubRateLimited: string; alreadyAdmin: string
+  adminAdded: string; adminRemoved: string; adminUpdated: string; adminUpdateFailed: string
+  lastAdminCannotBeRemoved: string; replaceAdmin: string; removeAdminConfirm: string; currentUser: string
+  soleAdminCannotBeReplaced: string; adminConfigConflict: string
 }
 
 const zh: T = {
@@ -62,6 +68,14 @@ const zh: T = {
   githubImageRepo: "GitHub图片仓库", expand: "展开", collapse: "收起",
   searchPosts: "搜索文章", noSearchResults: "没有匹配的文章", previous: "上一篇", next: "下一篇",
   relatedPosts: "相关文章", copyCode: "复制代码", copied: "已复制",
+  adminSettingsTab: "管理员配置", githubUserSearch: "搜索 GitHub 用户", githubUsernamePlaceholder: "输入 GitHub 用户名",
+  currentAdmins: "当前管理员", noAdmins: "暂无管理员", noGithubUsers: "未找到 GitHub 用户",
+  githubSearchFailed: "GitHub 用户搜索失败", githubRateLimited: "GitHub 匿名搜索请求过于频繁，请稍后再试",
+  alreadyAdmin: "已是管理员", adminAdded: "管理员已添加", adminRemoved: "管理员已移除", adminUpdated: "管理员已更新",
+  adminUpdateFailed: "管理员配置更新失败", lastAdminCannotBeRemoved: "至少需要保留一名管理员",
+  replaceAdmin: "替换管理员", removeAdminConfirm: "确定移除管理员 @{{username}} 吗？", currentUser: "当前账户",
+  soleAdminCannotBeReplaced: "请先添加另一名管理员，再替换当前唯一管理员",
+  adminConfigConflict: "管理员配置刚刚被其他操作更新，请重试",
 }
 
 const en: T = {
@@ -93,6 +107,14 @@ const en: T = {
   githubImageRepo: "GitHub Image Repo", expand: "Expand", collapse: "Collapse",
   searchPosts: "Search posts", noSearchResults: "No matching posts", previous: "Previous", next: "Next",
   relatedPosts: "Related posts", copyCode: "Copy code", copied: "Copied",
+  adminSettingsTab: "Administrators", githubUserSearch: "Search GitHub users", githubUsernamePlaceholder: "GitHub username",
+  currentAdmins: "Current administrators", noAdmins: "No administrators", noGithubUsers: "No GitHub users found",
+  githubSearchFailed: "GitHub user search failed", githubRateLimited: "GitHub anonymous search is rate limited. Try again later.",
+  alreadyAdmin: "Already added", adminAdded: "Administrator added", adminRemoved: "Administrator removed", adminUpdated: "Administrator updated",
+  adminUpdateFailed: "Administrator update failed", lastAdminCannotBeRemoved: "At least one administrator is required",
+  replaceAdmin: "Replace", removeAdminConfirm: "Remove administrator @{{username}}?", currentUser: "current account",
+  soleAdminCannotBeReplaced: "Add another administrator before replacing the only administrator",
+  adminConfigConflict: "The administrator list changed. Please try again.",
 }
 
 const mn: T = { ...en,
