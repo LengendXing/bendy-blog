@@ -8,6 +8,7 @@ import { ColumnSelect } from "@/components/column-select"
 import { Plus, Pencil, Trash2, Upload, X, ChevronLeft, ChevronRight, FilePlus2 } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { PixelStatus } from "@/components/pixel-status"
+import { AdminLoading } from "@/components/admin-loading"
 
 const PAGE_SIZE = 15
 type CreateStage = "saving" | "refreshing" | "opening" | null
@@ -29,6 +30,8 @@ export default function ContentPage() {
   const [createError, setCreateError] = useState("")
   const [showImport, setShowImport] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [deletingPost, setDeletingPost] = useState(false)
+  const [columnAction, setColumnAction] = useState(false)
   const [importResults, setImportResults] = useState<any[] | null>(null)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
@@ -67,19 +70,31 @@ export default function ContentPage() {
   function doSearch() { setSearchActive(search); setPage(1) }
 
   async function createColumn(name: string) {
-    const res = await fetch("/api/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
-    if (res.ok) { const col = await res.json(); if (!columns.find((c: any) => c.id === col.id)) setColumns(c => [...c, col]); return col }
-    return null
+    if (columnAction) return null
+    setColumnAction(true)
+    try {
+      const res = await fetch("/api/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
+      if (res.ok) { const col = await res.json(); if (!columns.find((c: any) => c.id === col.id)) setColumns(c => [...c, col]); return col }
+      return null
+    } finally {
+      setColumnAction(false)
+    }
   }
 
   async function updateColumn(id: string, name: string) {
-    const res = await fetch("/api/columns", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) })
-    if (res.ok) {
-      const col = await res.json()
-      setColumns(cols => cols.map(c => c.id === id ? col : c))
-      return col
+    if (columnAction) return null
+    setColumnAction(true)
+    try {
+      const res = await fetch("/api/columns", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) })
+      if (res.ok) {
+        const col = await res.json()
+        setColumns(cols => cols.map(c => c.id === id ? col : c))
+        return col
+      }
+      return null
+    } finally {
+      setColumnAction(false)
     }
-    return null
   }
 
   function resetNewPost() {
@@ -134,8 +149,13 @@ export default function ContentPage() {
 
   async function deletePost(id: string) {
     if (!confirm("Delete?")) return
-    await fetch("/api/blog", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
-    setAllPosts(p => p.filter(x => x.id !== id))
+    setDeletingPost(true)
+    try {
+      await fetch("/api/blog", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+      setAllPosts(p => p.filter(x => x.id !== id))
+    } finally {
+      setDeletingPost(false)
+    }
   }
 
   async function handleImport() {
@@ -156,10 +176,11 @@ export default function ContentPage() {
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64 font-mono text-xs">{t.loading}</div>
+  if (loading) return <AdminLoading className="min-h-64" />
 
   return (
-    <div>
+    <div className="relative min-h-[360px] overflow-hidden" aria-busy={deletingPost}>
+      {deletingPost && <AdminLoading size="sm" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h1 className="font-mono text-sm uppercase tracking-widest">// {t.content}</h1>
         <div className="flex gap-2">
@@ -180,12 +201,13 @@ export default function ContentPage() {
       </div>
 
       {showImport && (
-        <div className="border-2 border-pixel-black dark:border-pixel-white p-4 mb-6">
+        <div className="relative min-h-[150px] overflow-hidden border-2 border-pixel-black p-4 mb-6 dark:border-pixel-white" aria-busy={importing}>
+          {importing && <AdminLoading size="sm" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
           <h3 className="font-mono text-xs uppercase mb-3">Batch Import (Notion Markdown)</h3>
           <p className="font-body text-xs text-pixel-gray-500 mb-3">Select .md files. Format: # Title, metadata, blank line, body.</p>
           <div className="flex items-center gap-3 flex-wrap">
             <input ref={fileInputRef} type="file" accept=".md,.txt,.markdown" multiple className="font-body text-xs file:border-2 file:border-pixel-black dark:file:border-pixel-white file:bg-transparent file:px-3 file:py-1.5 file:font-mono file:text-xs file:mr-3 file:cursor-pointer" />
-            <Button size="sm" onClick={handleImport} disabled={importing}>{importing ? "Importing..." : "Import"}</Button>
+            <Button size="sm" onClick={handleImport} disabled={importing}>Import</Button>
             <Button size="sm" variant="ghost" onClick={() => { setShowImport(false); setImportResults(null) }}><X className="w-3 h-3" /></Button>
           </div>
           {importResults && (
@@ -206,7 +228,13 @@ export default function ContentPage() {
 
       {showNew && !createStage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-pixel-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="new-post-title">
-          <form onSubmit={createPost} className="pixel-pop w-full max-w-xl border-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black p-5 sm:p-6 text-pixel-black dark:text-pixel-white shadow-[8px_8px_0_currentColor]">
+          <form onSubmit={createPost} className="pixel-pop relative min-h-[360px] w-full max-w-xl overflow-hidden border-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black p-5 sm:p-6 text-pixel-black dark:text-pixel-white shadow-[8px_8px_0_currentColor]" aria-busy={columnAction}>
+            {columnAction && (
+              <AdminLoading
+                size="sm"
+                className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
+              />
+            )}
             <div className="flex items-start justify-between gap-4 border-b-2 border-pixel-black dark:border-pixel-white pb-4 mb-5">
               <div className="flex items-center gap-3">
                 <FilePlus2 className="w-4 h-4 shrink-0" />

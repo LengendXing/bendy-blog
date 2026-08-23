@@ -7,6 +7,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { LocaleProvider, useLocale } from "@/components/locale-provider"
 import { LayoutDashboard, MessageSquare, FileText, User, FolderGit2, Bell, LogOut, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { AdminLoading } from "@/components/admin-loading"
 import { useState } from "react"
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     { href: "/admin/settings", label: t.settings, icon: Bell },
   ]
 
-  if (status === "loading") return <div className="min-h-screen flex items-center justify-center font-mono text-xs">{t.loading}</div>
+  if (status === "loading") return <AdminLoading size="sm" className="min-h-screen" />
   if (!session || !(session.user as any)?.isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">

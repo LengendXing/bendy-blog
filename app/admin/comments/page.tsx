@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Trash2, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, MessageSquare, ArrowRight } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
+import { AdminLoading } from "@/components/admin-loading"
 
 const PAGE_SIZE = 15
 
@@ -34,6 +35,7 @@ export default function CommentsPage() {
   const [drawerSlug, setDrawerSlug] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [commentError, setCommentError] = useState("")
+  const [commentAction, setCommentAction] = useState("")
 
   useEffect(() => {
     fetch("/api/comments")
@@ -122,35 +124,52 @@ export default function CommentsPage() {
 
   async function deleteComment(id: string) {
     if (!confirm("Delete?")) return
-    const res = await fetch("/api/comments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
-    if (!res.ok) { setCommentError("Unable to delete comment"); return }
-    setComments(current => {
-      const removed = new Set([id])
-      let changed = true
-      while (changed) {
-        changed = false
-        for (const comment of current) {
-          if (comment.parentId && removed.has(comment.parentId) && !removed.has(comment.id)) {
-            removed.add(comment.id)
-            changed = true
+    if (commentAction) return
+    setCommentAction(`delete:${id}`)
+    setCommentError("")
+    try {
+      const res = await fetch("/api/comments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+      if (!res.ok) { setCommentError("Unable to delete comment"); return }
+      setComments(current => {
+        const removed = new Set([id])
+        let changed = true
+        while (changed) {
+          changed = false
+          for (const comment of current) {
+            if (comment.parentId && removed.has(comment.parentId) && !removed.has(comment.id)) {
+              removed.add(comment.id)
+              changed = true
+            }
           }
         }
+        return current.filter(comment => !removed.has(comment.id))
+      })
+      if (editId === id) {
+        setEditId(null)
+        setEditContent("")
       }
-      return current.filter(comment => !removed.has(comment.id))
-    })
-    if (editId === id) {
-      setEditId(null)
-      setEditContent("")
+    } catch {
+      setCommentError("Unable to delete comment")
+    } finally {
+      setCommentAction("")
     }
   }
 
   async function saveEdit(id: string) {
-    if (!editContent.trim()) return
-    const res = await fetch("/api/comments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, content: editContent.trim() }) })
-    if (!res.ok) { setCommentError("Unable to save comment"); return }
-    setComments(current => current.map(comment => comment.id === id ? { ...comment, content: editContent.trim() } : comment))
-    setEditId(null)
-    setEditContent("")
+    if (!editContent.trim() || commentAction) return
+    setCommentAction(`edit:${id}`)
+    setCommentError("")
+    try {
+      const res = await fetch("/api/comments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, content: editContent.trim() }) })
+      if (!res.ok) { setCommentError("Unable to save comment"); return }
+      setComments(current => current.map(comment => comment.id === id ? { ...comment, content: editContent.trim() } : comment))
+      setEditId(null)
+      setEditContent("")
+    } catch {
+      setCommentError("Unable to save comment")
+    } finally {
+      setCommentAction("")
+    }
   }
 
   function renderCommentTree(comment: any, depth = 0, trail = new Set<string>()): ReactNode {
@@ -209,7 +228,7 @@ export default function CommentsPage() {
     )
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64 font-mono text-xs">{t.loading}</div>
+  if (loading) return <AdminLoading className="min-h-64" />
 
   return (
     <div>
@@ -268,7 +287,13 @@ export default function CommentsPage() {
       {selectedGroup && (
         <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-labelledby="comments-drawer-title">
           <button className="absolute inset-0 bg-pixel-black/60" onClick={closeDrawer} aria-label={t.cancel} />
-          <aside className="pixel-drawer-in absolute right-0 top-0 bottom-0 flex w-full max-w-xl flex-col border-l-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black text-pixel-black dark:text-pixel-white shadow-[-8px_0_0_#0a0a0a] dark:shadow-[-8px_0_0_#fafafa]">
+          <aside className="pixel-drawer-in absolute right-0 top-0 bottom-0 flex w-full max-w-xl flex-col overflow-hidden border-l-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black text-pixel-black dark:text-pixel-white shadow-[-8px_0_0_#0a0a0a] dark:shadow-[-8px_0_0_#fafafa]" aria-busy={Boolean(commentAction)}>
+            {commentAction && (
+              <AdminLoading
+                size="sm"
+                className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
+              />
+            )}
             <header className="flex items-start justify-between gap-4 border-b-2 border-pixel-black dark:border-pixel-white p-4 sm:p-5">
               <div className="min-w-0">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-pixel-gray-500">// {t.comments}</p>

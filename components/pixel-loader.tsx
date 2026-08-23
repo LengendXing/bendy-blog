@@ -1,13 +1,14 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 interface Props {
   size?: "sm" | "md" | "lg"
+  framed?: boolean
 }
 
-export function PixelLoader({ size = "md" }: Props) {
+export function PixelLoader({ size = "md", framed = false }: Props) {
   const [snake, setSnake] = useState<{ x: number; y: number }[]>([])
-  const [head, setHead] = useState(0)
+  const canvasRef = useRef<HTMLDivElement>(null)
 
   const sizes = {
     sm: { w: 220, h: 60, cell: 6 },
@@ -16,26 +17,58 @@ export function PixelLoader({ size = "md" }: Props) {
   }
 
   const { w, h, cell } = sizes[size]
+  const [canvasSize, setCanvasSize] = useState({ width: w, height: h })
 
   useEffect(() => {
-    const padding = cell
-    const innerW = w - padding * 2
-    const innerH = h - padding * 2
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    const perimeter = 2 * (innerW + innerH) / cell
+    const updateWidth = () => {
+      const rect = canvas.getBoundingClientRect()
+      setCanvasSize(current => (
+        Math.abs(current.width - rect.width) < 0.5 && Math.abs(current.height - rect.height) < 0.5
+          ? current
+          : { width: rect.width, height: rect.height }
+      ))
+    }
+
+    updateWidth()
+    if (typeof ResizeObserver === "undefined") return
+
+    const observer = new ResizeObserver(updateWidth)
+    observer.observe(canvas)
+    return () => observer.disconnect()
+  }, [w])
+
+  useEffect(() => {
+    const border = framed ? 0 : 2
+    const contentW = canvasSize.width - border * 2
+    const contentH = canvasSize.height - border * 2
+    const scale = Math.min(canvasSize.width / w, canvasSize.height / h)
+    const renderCell = Math.max(2, cell * scale)
+    const padding = renderCell
+    const columns = Math.max(2, Math.floor((contentW - padding * 2) / renderCell))
+    const rows = Math.max(2, Math.floor((contentH - padding * 2) / renderCell))
+    const innerW = columns * renderCell
+    const innerH = rows * renderCell
+    const offsetX = Math.floor((contentW - innerW) / 2)
+    const offsetY = Math.floor((contentH - innerH) / 2)
+    const left = offsetX + padding
+    const top = offsetY + padding
+
     const path: { x: number; y: number }[] = []
 
-    for (let i = 0; i < innerW / cell; i++) {
-      path.push({ x: padding + i * cell, y: padding })
+    for (let i = 0; i < columns; i++) {
+      path.push({ x: left + i * renderCell, y: top })
     }
-    for (let i = 0; i < innerH / cell; i++) {
-      path.push({ x: w - padding - cell, y: padding + i * cell })
+    for (let i = 0; i < rows; i++) {
+      path.push({ x: left + innerW - renderCell, y: top + i * renderCell })
     }
-    for (let i = innerW / cell - 1; i >= 0; i--) {
-      path.push({ x: padding + i * cell, y: h - padding - cell })
+    for (let i = columns - 1; i >= 0; i--) {
+      path.push({ x: left + i * renderCell, y: top + innerH - renderCell })
     }
-    for (let i = innerH / cell - 1; i >= 0; i--) {
-      path.push({ x: padding, y: padding + i * cell })
+    for (let i = rows - 1; i >= 0; i--) {
+      path.push({ x: left, y: top + i * renderCell })
     }
 
     const snakeLength = 10
@@ -48,18 +81,30 @@ export function PixelLoader({ size = "md" }: Props) {
         newSnake.push(path[idx])
       }
       setSnake(newSnake)
-      setHead(frame % path.length)
       frame++
     }, 50)
 
     return () => clearInterval(timer)
-  }, [w, h, cell])
+  }, [canvasSize, w, h, cell, framed])
+
+  const scale = Math.min(canvasSize.width / w, canvasSize.height / h)
+  const renderCell = Math.max(2, cell * scale)
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div
+      className={`box-border flex max-w-full min-w-0 flex-col items-center gap-3 overflow-hidden ${
+        framed
+          ? "border-2 border-pixel-black bg-pixel-white p-2 dark:border-pixel-white dark:bg-pixel-black"
+          : ""
+      }`}
+      style={{ width: `min(${w + (framed ? 20 : 0)}px, 100%)` }}
+    >
       <div
-        className="relative border-2 border-pixel-gray-300 dark:border-pixel-gray-700"
-        style={{ width: `${w}px`, height: `${h}px` }}
+        ref={canvasRef}
+        className={`relative box-border max-w-full overflow-hidden ${
+          framed ? "" : "border-2 border-pixel-gray-300 dark:border-pixel-gray-700"
+        }`}
+        style={{ width: "100%", maxWidth: `${w}px`, aspectRatio: `${w} / ${h}` }}
       >
         {snake.map((seg, i) => (
           <div
@@ -74,20 +119,29 @@ export function PixelLoader({ size = "md" }: Props) {
             style={{
               left: `${seg.x}px`,
               top: `${seg.y}px`,
-              width: `${cell - 1}px`,
-              height: `${cell - 1}px`,
+              width: `${Math.max(1, renderCell - 1)}px`,
+              height: `${Math.max(1, renderCell - 1)}px`,
               opacity: 1 - i * 0.06,
               transition: "all 0.05s linear"
             }}
           />
         ))}
 
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-0.5 px-8">
-            <p className="font-mono text-[11px] text-pixel-black dark:text-pixel-white tracking-widest whitespace-nowrap">
+        <div className={`absolute inset-0 flex items-center justify-center ${framed ? "overflow-hidden" : ""}`}>
+          <div className={framed
+            ? "flex max-w-full flex-col items-center gap-0.5 px-1 text-center leading-tight"
+            : "flex flex-col items-center gap-0.5 px-8"
+          }>
+            <p className={framed
+              ? `max-w-full font-mono text-pixel-black dark:text-pixel-white tracking-normal ${size === "sm" ? "text-[9px]" : size === "md" ? "text-[10px]" : "text-[11px]"}`
+              : "whitespace-nowrap font-mono text-[11px] tracking-widest text-pixel-black dark:text-pixel-white"
+            }>
               多一点兴趣，少一点功利
             </p>
-            <p className="font-mono text-[9px] text-pixel-gray-500 dark:text-pixel-gray-400 tracking-wide whitespace-nowrap">
+            <p className={framed
+              ? `max-w-full font-mono text-pixel-gray-500 dark:text-pixel-gray-400 tracking-normal ${size === "sm" ? "text-[6px]" : size === "md" ? "text-[8px]" : "text-[9px]"}`
+              : "whitespace-nowrap font-mono text-[9px] tracking-wide text-pixel-gray-500 dark:text-pixel-gray-400"
+            }>
               More interest, less utility
             </p>
           </div>
