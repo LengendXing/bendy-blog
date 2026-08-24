@@ -47,28 +47,30 @@ export function PixelLoader({ size = "md", framed = false }: Props) {
     const scale = Math.min(canvasSize.width / w, canvasSize.height / h)
     const renderCell = Math.max(2, cell * scale)
     const padding = renderCell
-    const columns = Math.max(2, Math.floor((contentW - padding * 2) / renderCell))
-    const rows = Math.max(2, Math.floor((contentH - padding * 2) / renderCell))
-    const innerW = columns * renderCell
-    const innerH = rows * renderCell
-    const offsetX = Math.floor((contentW - innerW) / 2)
-    const offsetY = Math.floor((contentH - innerH) / 2)
-    const left = offsetX + padding
-    const top = offsetY + padding
+    // Keep the ring on the outside edges. Centering a discrete grid leaves
+    // extra space above it, which moves the top rail into the slogan area.
+    const left = padding
+    const right = Math.max(left + renderCell, contentW - padding - renderCell)
+    const top = padding
+    const bottom = Math.max(top + renderCell, contentH - padding - renderCell)
+    const columns = Math.max(2, Math.floor((right - left) / renderCell) + 1)
+    const rows = Math.max(2, Math.floor((bottom - top) / renderCell) + 1)
+    const xAt = (index: number) => Math.round(left + (right - left) * index / (columns - 1))
+    const yAt = (index: number) => Math.round(top + (bottom - top) * index / (rows - 1))
 
     const path: { x: number; y: number }[] = []
 
     for (let i = 0; i < columns; i++) {
-      path.push({ x: left + i * renderCell, y: top })
+      path.push({ x: xAt(i), y: top })
     }
-    for (let i = 0; i < rows; i++) {
-      path.push({ x: left + innerW - renderCell, y: top + i * renderCell })
+    for (let i = 1; i < rows; i++) {
+      path.push({ x: right, y: yAt(i) })
     }
-    for (let i = columns - 1; i >= 0; i--) {
-      path.push({ x: left + i * renderCell, y: top + innerH - renderCell })
+    for (let i = columns - 2; i >= 0; i--) {
+      path.push({ x: xAt(i), y: bottom })
     }
-    for (let i = rows - 1; i >= 0; i--) {
-      path.push({ x: left, y: top + i * renderCell })
+    for (let i = rows - 2; i > 0; i--) {
+      path.push({ x: left, y: yAt(i) })
     }
 
     const snakeLength = 10
@@ -128,10 +130,10 @@ export function PixelLoader({ size = "md", framed = false }: Props) {
         ))}
 
         <div className={`absolute inset-0 flex items-center justify-center ${framed ? "overflow-hidden" : ""}`}>
-          <div className={framed
-            ? "flex max-w-full flex-col items-center gap-0.5 px-1 text-center leading-tight"
-            : "flex flex-col items-center gap-0.5 px-8"
-          }>
+          <div className={`relative z-10 ${framed
+            ? "flex max-w-full flex-col items-center gap-0.5 bg-pixel-white px-1 text-center leading-tight dark:bg-pixel-black"
+            : "flex flex-col items-center gap-0.5 bg-pixel-white px-8 dark:bg-pixel-black"
+          }`}>
             <p className={framed
               ? `max-w-full font-mono text-pixel-black dark:text-pixel-white tracking-normal ${size === "sm" ? "text-[9px]" : size === "md" ? "text-[10px]" : "text-[11px]"}`
               : "whitespace-nowrap font-mono text-[11px] tracking-widest text-pixel-black dark:text-pixel-white"
