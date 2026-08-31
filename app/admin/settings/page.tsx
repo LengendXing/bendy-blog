@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { AdminLoading } from "@/components/admin-loading"
 import { Trash2, Plus, Eye, EyeOff, ExternalLink, Github, Pencil, Search, UserPlus, X } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
+import { PixelImage } from "@/components/pixel-image"
 
 interface AdminUser {
   username: string
@@ -558,7 +559,15 @@ export default function SettingsPage() {
                   })
                   return (
                     <div key={user.id} className="flex items-center gap-3 p-2.5">
-                      <img src={user.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full border border-pixel-gray-300 dark:border-pixel-gray-700" />
+                      <PixelImage
+                        src={user.avatar_url}
+                        alt=""
+                        aspectRatio={1}
+                        className="h-8 w-8 shrink-0 rounded-full"
+                        frameClassName="border border-pixel-gray-300 dark:border-pixel-gray-700"
+                        imageClassName="object-cover"
+                        fallback={<span className="block h-full w-full bg-pixel-gray-100 dark:bg-pixel-gray-900" aria-hidden="true" />}
+                      />
                       <a href={user.html_url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-1 font-body text-sm hover:underline">
                         <span className="truncate">@{user.login}</span>
                         <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -590,7 +599,15 @@ export default function SettingsPage() {
                     : currentGithubUsername?.toLowerCase() === admin.username.toLowerCase()
                   return (
                     <div key={admin.githubId || admin.username.toLowerCase()} className="flex items-center gap-3 border-2 border-pixel-gray-200 p-3 dark:border-pixel-gray-800">
-                      <img src={admin.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full border border-pixel-gray-300 dark:border-pixel-gray-700" />
+                      <PixelImage
+                        src={admin.avatarUrl}
+                        alt=""
+                        aspectRatio={1}
+                        className="h-9 w-9 shrink-0 rounded-full"
+                        frameClassName="border border-pixel-gray-300 dark:border-pixel-gray-700"
+                        imageClassName="object-cover"
+                        fallback={<span className="block h-full w-full bg-pixel-gray-100 dark:bg-pixel-gray-900" aria-hidden="true" />}
+                      />
                       <a href={admin.profileUrl} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-1 font-body text-sm hover:underline">
                         <span className="truncate">@{admin.username}{isCurrentUser ? ` (${t.currentUser})` : ""}</span>
                         <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />

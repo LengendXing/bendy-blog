@@ -8,16 +8,12 @@ import { sortPostsByEffectiveDate } from "@/lib/post-order"
 export const revalidate = 60
 const siteUrl = "https://blog.sunchengxin.com"
 
-type PageParams = { params: { slug: string } }
+type PageParams = { params: Promise<{ slug: string }> }
 
 async function getPost(slug: string) {
   return prisma.blogPost.findUnique({
     where: { slug },
     include: {
-      comments: {
-        include: { user: { select: { name: true, image: true, githubUsername: true } } },
-        orderBy: { createdAt: "asc" },
-      },
       column: { select: { id: true, name: true } },
     },
   })
@@ -41,7 +37,8 @@ async function getPostContext(post: Awaited<ReturnType<typeof getPost>>) {
 }
 
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
-  const slug = decodeURIComponent(params.slug)
+  const { slug: rawSlug } = await params
+  const slug = decodeURIComponent(rawSlug)
   const post = await getPost(slug)
   if (!post || !post.published) return {}
 
@@ -67,7 +64,8 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
 }
 
 export default async function BlogPostPage({ params }: PageParams) {
-  const slug = decodeURIComponent(params.slug)
+  const { slug: rawSlug } = await params
+  const slug = decodeURIComponent(rawSlug)
   const post = await getPost(slug)
   if (!post || !post.published) notFound()
   const context = await getPostContext(post)
@@ -75,12 +73,6 @@ export default async function BlogPostPage({ params }: PageParams) {
   let markdown = ""
   const file = await getFileContent(post.githubPath)
   if (file) markdown = file.content
-
-  const serialized = post.comments.map(c => ({
-    ...c,
-    createdAt: c.createdAt.toISOString(),
-    updatedAt: c.updatedAt.toISOString(),
-  }))
 
   const articleJsonLd = {
     "@context": "https://schema.org",
@@ -106,7 +98,7 @@ export default async function BlogPostPage({ params }: PageParams) {
           updatedAt: post.updatedAt.toISOString(),
         }}
         markdown={markdown}
-        initialComments={serialized}
+        initialComments={[]}
         navigation={{ previous: context.previous, next: context.next }}
         related={context.related}
       />

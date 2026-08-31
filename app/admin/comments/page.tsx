@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Trash2, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, MessageSquare, ArrowRight } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
+import { PixelImage } from "@/components/pixel-image"
 
 const PAGE_SIZE = 15
 
@@ -194,7 +195,17 @@ export default function CommentsPage() {
             </div>
           )}
           <div className="flex items-start gap-3">
-            {comment.user?.image && <img src={comment.user.image} alt="" className="w-7 h-7 rounded-full border shrink-0" />}
+            {comment.user?.image && (
+              <PixelImage
+                src={comment.user.image}
+                alt=""
+                aspectRatio={1}
+                className="h-7 w-7 shrink-0 rounded-full"
+                frameClassName="border"
+                imageClassName="object-cover"
+                fallback={<span className="block h-full w-full bg-pixel-gray-100 dark:bg-pixel-gray-900" aria-hidden="true" />}
+              />
+            )}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="font-mono text-xs">{commentAuthor(comment)}</span>
@@ -211,7 +222,16 @@ export default function CommentsPage() {
               ) : (
                 <>
                   <p className="font-body text-xs text-pixel-gray-600 dark:text-pixel-gray-400 break-words whitespace-pre-wrap">{comment.content}</p>
-                  {comment.imageUrl && <img src={comment.imageUrl} alt="" className="max-h-32 border border-pixel-gray-300 mt-2" onError={e => (e.currentTarget.style.display = "none")} />}
+                  {comment.imageUrl && (
+                    <PixelImage
+                      src={comment.imageUrl}
+                      alt=""
+                      aspectRatio={null}
+                      className="mt-2 max-w-full"
+                      frameClassName="border border-pixel-gray-300"
+                      imageClassName="max-h-32 max-w-full object-contain"
+                    />
+                  )}
                 </>
               )}
             </div>

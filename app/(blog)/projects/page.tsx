@@ -2,7 +2,9 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { ExternalLink } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
-import { PixelLoader } from "@/components/pixel-loader"
+import { PixelImage } from "@/components/pixel-image"
+import { ProjectListSkeleton } from "@/components/pixel-skeleton"
+import { useDelayedLoading } from "@/components/use-delayed-loading"
 
 const CLASSIC_EMOJIS = [
   "😊", "😄", "😃", "😆", "😂", "🤣", "😊", "😎", "🤩", "😋",
@@ -32,23 +34,41 @@ export default function ProjectsPage() {
   const { t } = useLocale()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [barrages, setBarrages] = useState<BarrageItem[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | null>(null)
   const hoveredRef = useRef<string | null>(null)
+  const lastFrameRef = useRef(0)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const showSkeleton = useDelayedLoading(loading)
 
   useEffect(() => {
-    fetch("/api/projects")
-      .then(r => r.json())
-      .then(data => {
-        setProjects(Array.isArray(data) ? data : [])
-        setLoading(false)
+    const controller = new AbortController()
+    fetch("/api/projects", { signal: controller.signal })
+      .then(async response => {
+        const data = await response.json().catch(() => null)
+        if (!response.ok || !Array.isArray(data)) throw new Error("projects request failed")
+        if (!controller.signal.aborted) setProjects(data)
       })
       .catch(err => {
-        console.error("Failed to fetch projects:", err)
-        setProjects([])
-        setLoading(false)
+        if (err?.name !== "AbortError") {
+          console.error("Failed to fetch projects:", err)
+          setLoadError(true)
+        }
       })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const update = () => setReducedMotion(media.matches)
+    update()
+    media.addEventListener?.("change", update)
+    return () => media.removeEventListener?.("change", update)
   }, [])
 
   useEffect(() => {
@@ -72,6 +92,12 @@ export default function ProjectsPage() {
 
   const animate = useCallback(() => {
     if (!containerRef.current) return
+    const now = performance.now()
+    if (now - lastFrameRef.current < 1000 / 30) {
+      animationRef.current = requestAnimationFrame(animate)
+      return
+    }
+    lastFrameRef.current = now
     const containerWidth = containerRef.current.clientWidth
     const cardWidth = 280
 
@@ -101,15 +127,18 @@ export default function ProjectsPage() {
   }, [])
 
   useEffect(() => {
-    if (barrages.length > 0) {
+    if (barrages.length > 0 && !reducedMotion) {
+      lastFrameRef.current = 0
       animationRef.current = requestAnimationFrame(animate)
       return () => {
-        if (animationRef.current) {
+        if (animationRef.current !== null) {
           cancelAnimationFrame(animationRef.current)
+          animationRef.current = null
         }
       }
     }
-  }, [barrages.length, animate])
+    return undefined
+  }, [barrages.length, animate, reducedMotion])
 
   const handleMouseEnter = (id: string) => {
     hoveredRef.current = id
@@ -127,10 +156,11 @@ export default function ProjectsPage() {
         <h1 className="font-mono text-base sm:text-lg uppercase tracking-widest mb-8 sm:mb-12 text-center">// {t.projects}</h1>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <PixelLoader size="lg" />
-        </div>
+      {loadError && <p className="mb-4 text-center font-body text-xs text-red-500" role="alert">{t.loadFailed}</p>}
+      {showSkeleton ? (
+        <div className="pixel-content-transition" aria-busy="true"><ProjectListSkeleton /></div>
+      ) : loading ? (
+        <div className="min-h-[300px]" aria-busy="true" />
       ) : projects.length === 0 ? (
         <div className="flex items-center justify-center min-h-[200px]">
           <p className="font-body text-pixel-gray-500">{t.noProjectsYet}</p>
@@ -138,7 +168,7 @@ export default function ProjectsPage() {
       ) : (
         <div
           ref={containerRef}
-          className="relative w-full"
+          className="pixel-content-transition relative w-full"
           style={{ height: `${rowHeight * 3}px` }}
         >
           {barrages.map(b => (
@@ -163,10 +193,14 @@ export default function ProjectsPage() {
                 <span className="absolute -top-2 -right-2 text-3xl leading-none animate-bounce" style={{ animationDuration: '2s' }}>{b.emoji}</span>
                 <div className="flex items-start gap-3">
                   {b.logoUrl ? (
-                    <img
+                    <PixelImage
                       src={b.logoUrl}
                       alt=""
-                      className="w-10 h-10 border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0 object-cover"
+                      aspectRatio={1}
+                      className="h-10 w-10 shrink-0"
+                      frameClassName="border-2 border-pixel-gray-300 dark:border-pixel-gray-700"
+                      imageClassName="object-cover"
+                      fallback={<span className="block h-full w-full bg-pixel-gray-100 dark:bg-pixel-gray-900" aria-hidden="true" />}
                     />
                   ) : (
                     <div className="w-10 h-10 border-2 border-pixel-black dark:border-pixel-white flex items-center justify-center bg-pixel-gray-100 dark:bg-pixel-gray-900">

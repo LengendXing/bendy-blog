@@ -13,6 +13,7 @@ type T = {
   noProjectsYet: string; aboutNotConfigured: string; signInToComment: string
   writeComment: string; post: string; noComments: string; share: string
   views: string; comments: string; replyTo: string; pasteImage: string
+  imageLoadFailed: string; loadFailed: string
   overview: string; content: string; commentsMgmt: string; aboutPage: string
   projectsMgmt: string; settings: string; loading: string; save: string
   cancel: string; edit: string; delete: string; add: string; enable: string
@@ -45,6 +46,7 @@ const zh: T = {
   signInToComment: "登录 GitHub 后评论", writeComment: "写评论...",
   post: "发送", noComments: "暂无评论", share: "分享", views: "阅读",
   comments: "评论", replyTo: "回复", pasteImage: "可粘贴图片",
+  imageLoadFailed: "图片加载失败", loadFailed: "加载失败，请稍后重试",
   overview: "总览", content: "内容管理", commentsMgmt: "评论管理",
   aboutPage: "关于页面", projectsMgmt: "项目管理", settings: "系统设置",
   loading: "Loading...", save: "保存", cancel: "取消", edit: "编辑",
@@ -84,6 +86,7 @@ const en: T = {
   signInToComment: "Sign in with GitHub to comment", writeComment: "Write a comment...",
   post: "Post", noComments: "No comments yet.", share: "share", views: "views",
   comments: "comments", replyTo: "Reply to", pasteImage: "Paste image supported",
+  imageLoadFailed: "Image failed to load", loadFailed: "Unable to load. Try again later.",
   overview: "Overview", content: "Content", commentsMgmt: "Comments",
   aboutPage: "About Page", projectsMgmt: "Projects", settings: "Settings",
   loading: "Loading...", save: "Save", cancel: "Cancel", edit: "Edit",

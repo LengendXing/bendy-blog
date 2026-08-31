@@ -10,6 +10,7 @@ import remarkGfm from "remark-gfm"
 import { PixelStatus } from "@/components/pixel-status"
 import { MarkdownTable } from "@/components/markdown-table"
 import { AdminLoading } from "@/components/admin-loading"
+import { PixelMarkdownImage } from "@/components/pixel-image"
 
 function EditContent() {
   const params = useSearchParams()
@@ -155,7 +156,7 @@ function EditContent() {
         <textarea value={markdown} onChange={e => setMarkdown(e.target.value)}
           className="p-3 sm:p-4 font-body text-sm bg-transparent resize-none focus:outline-none border-b-2 md:border-b-0 md:border-r-2 border-pixel-black dark:border-pixel-white"
           placeholder="Write markdown..." />
-        <div className="p-3 sm:p-4 overflow-auto prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ table: MarkdownTable }}>{markdown}</ReactMarkdown></div>
+        <div className="p-3 sm:p-4 overflow-auto prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ table: MarkdownTable, img: PixelMarkdownImage }}>{markdown}</ReactMarkdown></div>
       </div>
       {saving && <PixelStatus title={t.saving} detail={t.saving} />}
       {savedFeedback && <PixelStatus success title={t.savedSuccessfully} detail={t.returningToContent} />}

@@ -1,9 +1,6 @@
-import { PixelLoader } from "@/components/pixel-loader"
+import { DelayedLoading } from "@/components/delayed-loading"
+import { BlogListSkeleton } from "@/components/pixel-skeleton"
 
 export default function BlogLoading() {
-  return (
-    <div className="min-h-[60vh] flex items-center justify-center px-4">
-      <PixelLoader size="lg" />
-    </div>
-  )
+  return <DelayedLoading minHeightClassName="min-h-[60vh]"><BlogListSkeleton /></DelayedLoading>
 }

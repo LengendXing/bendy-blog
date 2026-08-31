@@ -8,6 +8,7 @@ import { LocaleProvider, useLocale } from "@/components/locale-provider"
 import { LayoutDashboard, MessageSquare, FileText, User, FolderGit2, Bell, LogOut, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminLoading } from "@/components/admin-loading"
+import { PixelImage } from "@/components/pixel-image"
 import { useState } from "react"
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
@@ -58,7 +59,17 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       </nav>
       <div className="border-t-2 border-pixel-black dark:border-pixel-white p-4">
         <div className="flex items-center gap-2">
-          {session.user.image && <img src={session.user.image} alt="" className="w-6 h-6 rounded-full border" />}
+          {session.user.image && (
+            <PixelImage
+              src={session.user.image}
+              alt=""
+              aspectRatio={1}
+              className="h-6 w-6 shrink-0 rounded-full"
+              frameClassName="border"
+              imageClassName="object-cover"
+              fallback={<span className="block h-full w-full bg-pixel-gray-100 dark:bg-pixel-gray-900" aria-hidden="true" />}
+            />
+          )}
           <span className="font-mono text-xs truncate flex-1">{(session.user as any).githubUsername || session.user.name}</span>
           <button onClick={() => signOut()} title={t.signOut} className="hover:opacity-70"><LogOut className="w-3.5 h-3.5" /></button>
         </div>

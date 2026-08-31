@@ -2,10 +2,12 @@
 
 import Link from "next/link"
 import { Search, X } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale } from "@/components/locale-provider"
 import { ColumnSelect } from "@/components/column-select"
-import { PixelLoader } from "@/components/pixel-loader"
+import { BlogListSkeleton } from "@/components/pixel-skeleton"
+import { useDelayedLoading } from "@/components/use-delayed-loading"
+import { LIST_SKELETON_DELAY_MS } from "@/lib/loading"
 
 interface BlogPostSummary {
   slug: string
@@ -35,7 +37,11 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
   const [columnId, setColumnId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [columnsLoading, setColumnsLoading] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [columnsError, setColumnsError] = useState(false)
   const [query, setQuery] = useState(initialQuery)
+  const requestId = useRef(0)
+  const showSkeleton = useDelayedLoading(loading, LIST_SKELETON_DELAY_MS, columnId)
 
   const visiblePosts = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase()
@@ -53,31 +59,53 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
   }
 
   useEffect(() => {
+    const currentRequest = ++requestId.current
     if (!columnId) {
       setPosts(initialPosts)
+      setLoading(false)
+      setLoadError(false)
       return
     }
 
+    const controller = new AbortController()
     setLoading(true)
-    fetch(`/api/blog?published=true&columnId=${encodeURIComponent(columnId)}`)
+    setLoadError(false)
+    fetch(`/api/blog?published=true&columnId=${encodeURIComponent(columnId)}`, { signal: controller.signal })
       .then(async response => {
-        const data = await response.json().catch(() => [])
-        setPosts(response.ok && Array.isArray(data) ? data.filter((post: BlogPostSummary) => post.published) : [])
+        const data = await response.json().catch(() => null)
+        if (!response.ok || !Array.isArray(data)) throw new Error("blog list request failed")
+        if (currentRequest === requestId.current && !controller.signal.aborted) {
+          setPosts(data.filter((post: BlogPostSummary) => post.published))
+        }
       })
-      .catch(() => setPosts([]))
-      .finally(() => setLoading(false))
+      .catch(error => {
+        if (error?.name === "AbortError" || currentRequest !== requestId.current) return
+        setLoadError(true)
+      })
+      .finally(() => {
+        if (currentRequest === requestId.current && !controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
   }, [columnId, initialPosts])
 
   useEffect(() => {
     if (initialColumns.length > 0) return
+    const controller = new AbortController()
     setColumnsLoading(true)
-    fetch("/api/columns")
+    setColumnsError(false)
+    fetch("/api/columns", { signal: controller.signal })
       .then(async response => {
-        const data = await response.json().catch(() => [])
-        if (response.ok && Array.isArray(data)) setColumns(data)
+        const data = await response.json().catch(() => null)
+        if (!response.ok || !Array.isArray(data)) throw new Error("column list request failed")
+        if (!controller.signal.aborted) setColumns(data)
       })
-      .catch(() => {})
-      .finally(() => setColumnsLoading(false))
+      .catch(error => {
+        if (error?.name !== "AbortError") setColumnsError(true)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setColumnsLoading(false)
+      })
+    return () => controller.abort()
   }, [initialColumns])
 
   function displayDate(post: BlogPostSummary) {
@@ -89,8 +117,9 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
     <div className="max-w-3xl mx-auto px-4 py-10 sm:py-16">
       <div className="flex items-center justify-between mb-5 sm:mb-6 gap-4 flex-wrap">
         <h1 className="font-mono text-base sm:text-lg uppercase tracking-widest">// {t.blogs}</h1>
-        {!columnsLoading && <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} placeholder={t.allColumns} borderless />}
+        {!columnsLoading && !columnsError && <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} placeholder={t.allColumns} borderless />}
       </div>
+      {columnsError && <p className="mb-3 font-body text-xs text-red-500" role="alert">{t.loadFailed}</p>}
       <div className="flex items-center border-b-2 border-pixel-black dark:border-pixel-white mb-8 sm:mb-12">
         <Search className="w-4 h-4 shrink-0 text-pixel-gray-400" aria-hidden="true" />
         <input
@@ -106,12 +135,15 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
           </button>
         )}
       </div>
-      {loading ? (
-        <div className="flex items-center justify-center min-h-[200px]"><PixelLoader size="md" /></div>
+      {loadError && <p className="mb-4 font-body text-xs text-red-500" role="alert">{t.loadFailed}</p>}
+      {showSkeleton ? (
+        <div className="pixel-content-transition" aria-busy="true"><BlogListSkeleton /></div>
+      ) : loading && posts.length === 0 ? (
+        <div className="min-h-[200px]" aria-busy="true" />
       ) : visiblePosts.length === 0 ? (
         <p className="font-body text-pixel-gray-500">{query.trim() ? t.noSearchResults : t.noPostsYet}</p>
       ) : (
-        <div className="space-y-0">
+        <div className="pixel-content-transition space-y-0">
           {visiblePosts.map((post, index) => (
             <Link key={post.slug} href={`/blogs/${encodeURIComponent(post.slug)}`} className="group block border-b-2 border-pixel-gray-200 dark:border-pixel-gray-800 py-4 sm:py-5 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900 px-3 sm:px-4 -mx-3 sm:-mx-4 transition-colors">
               <div className="flex items-baseline justify-between gap-2 sm:gap-4">

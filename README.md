@@ -10,7 +10,7 @@ GitHub OAuth 登录流程说明见 [`docs/github-oauth-flow-zh.md`](docs/github-
 
 | Layer | Tech |
 |-------|------|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js 15 (App Router) |
 | Styling | Tailwind CSS + pixel theme (black/white/gray) |
 | Auth | NextAuth.js + GitHub OAuth |
 | Content | Markdown in GitHub repo |

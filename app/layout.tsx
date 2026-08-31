@@ -1,6 +1,7 @@
 import "@/styles/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthSessionProvider } from "@/components/session-provider"
+import { PageTransition } from "@/components/page-transition"
 import type { Metadata, Viewport } from "next"
 
 const siteUrl = "https://blog.sunchengxin.com"
@@ -64,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd).replace(/</g, "\\u003c") }} />
         <AuthSessionProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            {children}
+            <PageTransition>{children}</PageTransition>
           </ThemeProvider>
         </AuthSessionProvider>
       </body>

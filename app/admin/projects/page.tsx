@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Pencil, Trash2, X, Check, ExternalLink } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
+import { PixelImage } from "@/components/pixel-image"
 
 export default function ProjectsAdminPage() {
   const { t } = useLocale()
@@ -117,7 +118,15 @@ export default function ProjectsAdminPage() {
           <div key={p.id} className="border-b border-pixel-gray-200 dark:border-pixel-gray-800 py-3 flex items-center gap-6 sm:gap-8">
             <span className="font-mono text-xs text-pixel-gray-400 w-8 shrink-0 hidden sm:block">{index + 1}</span>
             {p.logoUrl ? (
-              <img src={p.logoUrl} alt="" className="w-8 h-8 rounded-full border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0 object-cover" />
+              <PixelImage
+                src={p.logoUrl}
+                alt=""
+                aspectRatio={1}
+                className="h-8 w-8 shrink-0 rounded-full"
+                frameClassName="border-2 border-pixel-gray-300 dark:border-pixel-gray-700"
+                imageClassName="object-cover"
+                fallback={<span className="block h-full w-full bg-pixel-gray-100 dark:bg-pixel-gray-800" aria-hidden="true" />}
+              />
             ) : (
               <div className="w-8 h-8 rounded-full border-2 border-pixel-gray-300 dark:border-pixel-gray-700 shrink-0 bg-pixel-gray-100 dark:bg-pixel-gray-800" />
             )}

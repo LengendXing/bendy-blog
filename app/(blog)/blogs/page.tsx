@@ -17,7 +17,8 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function BlogsPage({ searchParams }: { searchParams?: { q?: string } }) {
+export default async function BlogsPage({ searchParams }: { searchParams?: Promise<{ q?: string }> }) {
+  const resolvedSearchParams = searchParams ? await searchParams : {}
   let posts: Array<{
     slug: string
     title: string
@@ -48,7 +49,7 @@ export default async function BlogsPage({ searchParams }: { searchParams?: { q?:
     <BlogsClient
       initialPosts={orderedPosts.map(post => ({ ...post, publishDate: post.publishDate?.toISOString() || null, createdAt: post.createdAt.toISOString() }))}
       initialColumns={columns}
-      initialQuery={searchParams?.q || ""}
+      initialQuery={resolvedSearchParams.q || ""}
     />
   )
 }
