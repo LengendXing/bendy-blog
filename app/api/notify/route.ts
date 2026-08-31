@@ -1,10 +1,15 @@
+export const dynamic = "force-dynamic"
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
-  return NextResponse.json(await prisma.notifyConfig.findMany())
+  const session = await getServerSession(authOptions)
+  if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
+  return NextResponse.json(await prisma.notifyConfig.findMany(), {
+    headers: { "Cache-Control": "private, no-store", Vary: "Cookie" },
+  })
 }
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)

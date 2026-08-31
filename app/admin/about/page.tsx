@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useLocale } from "@/components/locale-provider"
 import { locales, localeNames, Locale } from "@/lib/i18n"
+import { AdminLoading } from "@/components/admin-loading"
 
 export default function AboutAdminPage() {
   const { t } = useLocale()
@@ -16,21 +17,31 @@ export default function AboutAdminPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const controller = new AbortController()
     setLoading(true)
-    fetch(`/api/about?locale=${activeLocale}`).then(r => r.json()).then(d => {
-      setData(d.name ? d : { name: "", bio: "", avatar: "", markdown: "", links: {} })
-      setLoading(false)
-    })
+    fetch(`/api/about?locale=${activeLocale}`, { signal: controller.signal })
+      .then(r => r.json())
+      .then(d => setData(d.name ? d : { name: "", bio: "", avatar: "", markdown: "", links: {} }))
+      .catch(error => {
+        if ((error as Error).name !== "AbortError") setData({ name: "", bio: "", avatar: "", markdown: "", links: {} })
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
   }, [activeLocale])
 
   async function save() {
     setSaving(true)
-    await fetch("/api/about", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ locale: activeLocale, ...data }),
-    })
-    setSaving(false)
+    try {
+      await fetch("/api/about", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: activeLocale, ...data }),
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   function addLink() {
@@ -44,7 +55,8 @@ export default function AboutAdminPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="relative max-w-2xl overflow-hidden" aria-busy={saving}>
+      {saving && <AdminLoading size="md" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.aboutPage}</h1>
 
       <div className="flex gap-1 mb-6 flex-wrap">
@@ -59,7 +71,7 @@ export default function AboutAdminPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-32 font-mono text-xs">{t.loading}</div>
+        <AdminLoading size="md" className="min-h-32" />
       ) : (
         <div className="space-y-4">
           <div><label className="font-mono text-xs block mb-1">{t.title} ({localeNames[activeLocale]})</label><Input value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} /></div>
@@ -80,7 +92,7 @@ export default function AboutAdminPage() {
               <Button size="sm" variant="outline" onClick={addLink}>{t.add}</Button>
             </div>
           </div>
-          <Button onClick={save} disabled={saving}>{saving ? t.saving : t.save}</Button>
+          <Button onClick={save} disabled={saving}>{t.save}</Button>
         </div>
       )}
     </div>

@@ -2,11 +2,15 @@
 
 A minimal, pixel-themed blog with admin dashboard.
 
+GitHub OAuth 登录流程说明见 [`docs/github-oauth-flow-zh.md`](docs/github-oauth-flow-zh.md)。
+
+本次 GitHub OAuth 登录事故复盘见 [`docs/incident-github-oauth-2026-04-zh.md`](docs/incident-github-oauth-2026-04-zh.md)。
+
 ## Tech Stack
 
 | Layer | Tech |
 |-------|------|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js 15 (App Router) |
 | Styling | Tailwind CSS + pixel theme (black/white/gray) |
 | Auth | NextAuth.js + GitHub OAuth |
 | Content | Markdown in GitHub repo |

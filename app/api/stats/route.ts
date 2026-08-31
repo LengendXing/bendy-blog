@@ -1,13 +1,25 @@
+export const dynamic = "force-dynamic"
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redis } from "@/lib/redis"
 import { sendNotifications } from "@/lib/notify"
+import { isRateLimited, requestIp } from "@/lib/rate-limit"
 
 export async function POST(req: NextRequest) {
-  const { slug, event } = await req.json()
+  let body: any
+  try { body = await req.json() } catch { return NextResponse.json({ error: "invalid body" }, { status: 400 }) }
+  const slug = typeof body.slug === "string" ? body.slug : ""
+  const event = body.event
   if (!slug || !event) return NextResponse.json({ error: "missing" }, { status: 400 })
+  if (event !== "view" && event !== "share") return NextResponse.json({ error: "invalid event" }, { status: 400 })
+  if (await isRateLimited(`stats:${event}:${slug}:${requestIp(req)}`, event === "view" ? 20 : 5, 3600)) {
+    const current = await prisma.blogPost.findUnique({ where: { slug }, select: { views: true, shares: true } })
+    return NextResponse.json({ views: current?.views || 0, shares: current?.shares || 0, counted: false })
+  }
   const post = await prisma.blogPost.findUnique({ where: { slug } })
-  if (!post) return NextResponse.json({ error: "not found" }, { status: 404 })
+  if (!post?.published) return NextResponse.json({ error: "not found" }, { status: 404 })
 
   const update: any = {}
   if (event === "view") update.views = { increment: 1 }
@@ -23,6 +35,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
   const posts = await prisma.blogPost.findMany({
     select: { slug: true, title: true, views: true, shares: true, updatedAt: true, _count: { select: { comments: true } } },
     orderBy: { views: "desc" },

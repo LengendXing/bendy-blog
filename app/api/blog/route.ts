@@ -1,20 +1,43 @@
+export const dynamic = "force-dynamic"
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFileContent, getFileContent, deleteFile } from "@/lib/github"
+import { sortPostsByEffectiveDate } from "@/lib/post-order"
 
 export async function GET(req: NextRequest) {
   const published = req.nextUrl.searchParams.get("published")
   const columnId = req.nextUrl.searchParams.get("columnId")
-  const where: any = {}
-  if (published === "true") where.published = true
+  const session = await getServerSession(authOptions)
+  const isAdmin = Boolean((session?.user as any)?.isAdmin)
+  const where: any = { published: true }
+  if (isAdmin && published !== "true") delete where.published
   if (columnId) where.columnId = columnId
-  return NextResponse.json(await prisma.blogPost.findMany({
+
+  if (!isAdmin) {
+    const posts = await prisma.blogPost.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: {
+        slug: true,
+        title: true,
+        description: true,
+        published: true,
+        publishDate: true,
+        createdAt: true,
+        column: { select: { id: true, name: true } },
+      },
+    })
+    return NextResponse.json(sortPostsByEffectiveDate(posts))
+  }
+
+  const posts = await prisma.blogPost.findMany({
     where,
-    orderBy: [{ publishDate: "desc" }, { createdAt: "desc" }],
+    orderBy: { createdAt: "desc" },
     include: { _count: { select: { comments: true } }, column: true },
-  }))
+  })
+  return NextResponse.json(sortPostsByEffectiveDate(posts))
 }
 
 export async function POST(req: NextRequest) {

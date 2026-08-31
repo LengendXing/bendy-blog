@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,11 +24,188 @@
     0 -2px 0 0 currentColor;
 }
 
+@keyframes pixel-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  70% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pixel-progress {
+  0%, 100% { opacity: 0.35; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+@keyframes pixel-drawer-in {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(0); }
+}
+
+.pixel-pop { animation: pixel-pop 180ms steps(3, end) both; }
+.pixel-drawer-in { animation: pixel-drawer-in 220ms steps(4, end) both; }
+.pixel-status-panel { box-shadow: 8px 8px 0 currentColor; }
+.pixel-progress { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; height: 12px; }
+.pixel-progress-cell { display: block; background: currentColor; opacity: 0.35; animation: pixel-progress 800ms steps(2, end) infinite; }
+.pixel-progress-cell-done { opacity: 1; animation: none; }
+
+/* Shared loading and route-transition surfaces. Animate only opacity and
+   transform so a loading state never forces a full-page layout recalculation. */
+@keyframes pixel-skeleton-flash {
+  0%, 100% { opacity: 0.42; }
+  50% { opacity: 0.78; }
+}
+
+@keyframes page-transition-in {
+  0% { opacity: 0; transform: translate3d(8px, 0, 0); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes pixel-content-in {
+  0% { opacity: 0; transform: translate3d(0, 4px, 0); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.pixel-skeleton {
+  display: block;
+  max-width: 100%;
+  background: var(--skeleton-bg, #e0e0e0);
+  border: 1px solid var(--skeleton-border, #c0c0c0);
+  animation: pixel-skeleton-flash 1.5s steps(2, end) infinite;
+}
+
+.dark .pixel-skeleton {
+  --skeleton-bg: #202020;
+  --skeleton-border: #606060;
+}
+
+.page-transition {
+  min-height: 100%;
+  animation: page-transition-in 240ms steps(4, end) both;
+  will-change: opacity, transform;
+}
+
+.page-transition--static {
+  animation: none;
+  will-change: auto;
+}
+
+.pixel-content-transition {
+  animation: pixel-content-in 200ms steps(2, end) both;
+}
+
+.pixel-image-frame {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--skeleton-bg, #f0f0f0);
+  border: 2px solid currentColor;
+  isolation: isolate;
+}
+
+.pixel-image-frame--auto {
+  min-height: 1.5rem;
+  width: fit-content;
+  height: auto;
+}
+
+.pixel-image-frame--auto.pixel-image-frame--fill {
+  width: 100%;
+}
+
+.dark .pixel-image-frame {
+  --skeleton-bg: #141414;
+}
+
+.pixel-image-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--skeleton-bg, #f0f0f0) 0,
+    var(--skeleton-bg, #f0f0f0) 6px,
+    var(--skeleton-border, #e0e0e0) 6px,
+    var(--skeleton-border, #e0e0e0) 8px
+  );
+  animation: pixel-skeleton-flash 1.5s steps(2, end) infinite;
+}
+
+.pixel-image-element {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 200ms steps(2, end);
+}
+
+.pixel-image-frame--auto .pixel-image-element {
+  position: relative;
+  inset: auto;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  min-height: 1.5rem;
+  object-fit: contain;
+}
+
+.pixel-image-element--loaded {
+  opacity: 1;
+}
+
+.pixel-image-error {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: var(--skeleton-bg, #f0f0f0);
+  color: var(--text-color, #606060);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.65rem;
+  text-align: center;
+}
+
+.pixel-image-frame--auto .pixel-image-error {
+  position: relative;
+  min-height: 3rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-skeleton,
+  .pixel-image-placeholder {
+    animation: none;
+  }
+
+  .page-transition {
+    animation: none;
+    will-change: auto;
+  }
+
+  .pixel-content-transition {
+    animation: none;
+  }
+
+  .pixel-image-element {
+    transition: none;
+  }
+}
+
 /* Markdown content styles */
+.prose-pixel {
+  font-family: "Space Mono", "Noto Sans Mono CJK SC", "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", monospace;
+  font-size: 15px;
+  line-height: 1.8;
+}
 .prose-pixel h1 { @apply font-mono text-2xl mb-6 mt-8; }
 .prose-pixel h2 { @apply font-mono text-xl mb-4 mt-6; }
 .prose-pixel h3 { @apply font-mono text-lg mb-3 mt-5; }
-.prose-pixel p { @apply mb-4 leading-relaxed; }
+.prose-pixel p { @apply mb-4; line-height: 1.8; }
 .prose-pixel ul { @apply list-disc ml-6 mb-4; }
 .prose-pixel ol { @apply list-decimal ml-6 mb-4; }
 .prose-pixel li { @apply mb-1; }
@@ -38,6 +215,28 @@
 .prose-pixel blockquote { @apply border-l-4 border-pixel-black dark:border-pixel-white pl-4 italic mb-4; }
 .prose-pixel a { @apply underline underline-offset-2 hover:decoration-2; }
 .prose-pixel img { @apply border-2 border-pixel-black dark:border-pixel-white my-4; }
+.prose-pixel .pixel-image-frame { @apply my-4; }
+.prose-pixel .pixel-image-element { border: 0; margin: 0; }
 .prose-pixel hr { @apply border-pixel-black dark:border-pixel-white my-8; }
-.prose-pixel table { @apply w-full border-collapse mb-4; }
-.prose-pixel th, .prose-pixel td { @apply border-2 border-pixel-black dark:border-pixel-white p-2 text-left text-sm; }
+.prose-table-scroll {
+  max-width: 100%;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.prose-pixel table {
+  width: max-content;
+  min-width: 100%;
+  margin-bottom: 0;
+  border-collapse: collapse;
+  font-family: "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.prose-pixel th, .prose-pixel td {
+  @apply border-2 border-pixel-black dark:border-pixel-white p-2 text-left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

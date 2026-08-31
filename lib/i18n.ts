@@ -1,8 +1,8 @@
-export const locales = ["zh", "mn", "ug", "en", "ar", "ru", "ja", "ko"] as const
+export const locales = ["zh", "mn", "ug", "bo", "en", "ar", "ru", "ja", "ko"] as const
 export type Locale = (typeof locales)[number]
 
 export const localeNames: Record<Locale, string> = {
-  zh: "中文", mn: "ᠮᠣᠩᠭᠣᠯ", ug: "ئۇيغۇرچە", en: "English",
+  zh: "中文", mn: "ᠮᠣᠩᠭᠣᠯ", ug: "ئۇيغۇرچە", bo: "བོད་སྐད།", en: "English",
   ar: "العربية", ru: "Русский", ja: "日本語", ko: "한국어",
 }
 
@@ -13,6 +13,7 @@ type T = {
   noProjectsYet: string; aboutNotConfigured: string; signInToComment: string
   writeComment: string; post: string; noComments: string; share: string
   views: string; comments: string; replyTo: string; pasteImage: string
+  imageLoadFailed: string; loadFailed: string
   overview: string; content: string; commentsMgmt: string; aboutPage: string
   projectsMgmt: string; settings: string; loading: string; save: string
   cancel: string; edit: string; delete: string; add: string; enable: string
@@ -22,12 +23,21 @@ type T = {
   mostCommented: string; topViewsSingle: string; lastUpdated: string
   noActivityToday: string; newPost: string; title: string; slug: string
   description: string; published: string; saving: string; blogTitle: string
+  refreshingList: string; openingEditor: string; savedSuccessfully: string; returningToContent: string; saveFailed: string
   footerText: string; webhookConfig: string; emailConfig: string
   notifySettings: string; templateVars: string; activeConfigs: string
   siteSettings: string; language: string; allColumns: string; column: string
   columnPlaceholder: string; siteSettingsTab: string; webhookTab: string
   emailTab: string; imageStorage: string; dufsService: string
   githubImageRepo: string; expand: string; collapse: string
+  searchPosts: string; noSearchResults: string; previous: string; next: string
+  relatedPosts: string; copyCode: string; copied: string
+  adminSettingsTab: string; githubUserSearch: string; githubUsernamePlaceholder: string
+  currentAdmins: string; noAdmins: string; noGithubUsers: string
+  githubSearchFailed: string; githubRateLimited: string; alreadyAdmin: string
+  adminAdded: string; adminRemoved: string; adminUpdated: string; adminUpdateFailed: string
+  lastAdminCannotBeRemoved: string; replaceAdmin: string; removeAdminConfirm: string; currentUser: string
+  soleAdminCannotBeReplaced: string; adminConfigConflict: string
 }
 
 const zh: T = {
@@ -36,6 +46,7 @@ const zh: T = {
   signInToComment: "登录 GitHub 后评论", writeComment: "写评论...",
   post: "发送", noComments: "暂无评论", share: "分享", views: "阅读",
   comments: "评论", replyTo: "回复", pasteImage: "可粘贴图片",
+  imageLoadFailed: "图片加载失败", loadFailed: "加载失败，请稍后重试",
   overview: "总览", content: "内容管理", commentsMgmt: "评论管理",
   aboutPage: "关于页面", projectsMgmt: "项目管理", settings: "系统设置",
   loading: "Loading...", save: "保存", cancel: "取消", edit: "编辑",
@@ -48,6 +59,7 @@ const zh: T = {
   noActivityToday: "没人来骚扰你",
   newPost: "新建文章", title: "标题", slug: "Slug", description: "描述",
   published: "已发布", saving: "保存中...",
+  refreshingList: "刷新文章列表...", openingEditor: "打开内容编辑器...", savedSuccessfully: "保存成功", returningToContent: "返回内容管理...", saveFailed: "保存失败",
   blogTitle: "博客标题", footerText: "底部文字",
   webhookConfig: "Webhook 配置", emailConfig: "邮件配置",
   notifySettings: "通知设置", templateVars: "模板变量",
@@ -56,6 +68,16 @@ const zh: T = {
   siteSettingsTab: "站点设置", webhookTab: "Webhook通知", emailTab: "Email通知",
   imageStorage: "图片存储", dufsService: "Dufs服务",
   githubImageRepo: "GitHub图片仓库", expand: "展开", collapse: "收起",
+  searchPosts: "搜索文章", noSearchResults: "没有匹配的文章", previous: "上一篇", next: "下一篇",
+  relatedPosts: "相关文章", copyCode: "复制代码", copied: "已复制",
+  adminSettingsTab: "管理员配置", githubUserSearch: "搜索 GitHub 用户", githubUsernamePlaceholder: "输入 GitHub 用户名",
+  currentAdmins: "当前管理员", noAdmins: "暂无管理员", noGithubUsers: "未找到 GitHub 用户",
+  githubSearchFailed: "GitHub 用户搜索失败", githubRateLimited: "GitHub 匿名搜索请求过于频繁，请稍后再试",
+  alreadyAdmin: "已是管理员", adminAdded: "管理员已添加", adminRemoved: "管理员已移除", adminUpdated: "管理员已更新",
+  adminUpdateFailed: "管理员配置更新失败", lastAdminCannotBeRemoved: "至少需要保留一名管理员",
+  replaceAdmin: "替换管理员", removeAdminConfirm: "确定移除管理员 @{{username}} 吗？", currentUser: "当前账户",
+  soleAdminCannotBeReplaced: "请先添加另一名管理员，再替换当前唯一管理员",
+  adminConfigConflict: "管理员配置刚刚被其他操作更新，请重试",
 }
 
 const en: T = {
@@ -64,6 +86,7 @@ const en: T = {
   signInToComment: "Sign in with GitHub to comment", writeComment: "Write a comment...",
   post: "Post", noComments: "No comments yet.", share: "share", views: "views",
   comments: "comments", replyTo: "Reply to", pasteImage: "Paste image supported",
+  imageLoadFailed: "Image failed to load", loadFailed: "Unable to load. Try again later.",
   overview: "Overview", content: "Content", commentsMgmt: "Comments",
   aboutPage: "About Page", projectsMgmt: "Projects", settings: "Settings",
   loading: "Loading...", save: "Save", cancel: "Cancel", edit: "Edit",
@@ -76,6 +99,7 @@ const en: T = {
   noActivityToday: "No one bothered you today",
   newPost: "New Post", title: "Title", slug: "Slug", description: "Description",
   published: "Published", saving: "Saving...",
+  refreshingList: "Refreshing post list...", openingEditor: "Opening editor...", savedSuccessfully: "Saved", returningToContent: "Returning to content...", saveFailed: "Save failed",
   blogTitle: "Blog Title", footerText: "Footer Text",
   webhookConfig: "Webhook Config", emailConfig: "Email Config",
   notifySettings: "Notification Settings", templateVars: "Template Variables",
@@ -84,6 +108,16 @@ const en: T = {
   siteSettingsTab: "Site Settings", webhookTab: "Webhook Notify", emailTab: "Email Notify",
   imageStorage: "Image Storage", dufsService: "Dufs Service",
   githubImageRepo: "GitHub Image Repo", expand: "Expand", collapse: "Collapse",
+  searchPosts: "Search posts", noSearchResults: "No matching posts", previous: "Previous", next: "Next",
+  relatedPosts: "Related posts", copyCode: "Copy code", copied: "Copied",
+  adminSettingsTab: "Administrators", githubUserSearch: "Search GitHub users", githubUsernamePlaceholder: "GitHub username",
+  currentAdmins: "Current administrators", noAdmins: "No administrators", noGithubUsers: "No GitHub users found",
+  githubSearchFailed: "GitHub user search failed", githubRateLimited: "GitHub anonymous search is rate limited. Try again later.",
+  alreadyAdmin: "Already added", adminAdded: "Administrator added", adminRemoved: "Administrator removed", adminUpdated: "Administrator updated",
+  adminUpdateFailed: "Administrator update failed", lastAdminCannotBeRemoved: "At least one administrator is required",
+  replaceAdmin: "Replace", removeAdminConfirm: "Remove administrator @{{username}}?", currentUser: "current account",
+  soleAdminCannotBeReplaced: "Add another administrator before replacing the only administrator",
+  adminConfigConflict: "The administrator list changed. Please try again.",
 }
 
 const mn: T = { ...en,
@@ -141,7 +175,41 @@ const ko: T = { ...en,
   noActivityToday: "오늘은 아무도 방해하지 않았습니다", expand: "펼치기", collapse: "접기",
 }
 
-const translations: Record<Locale, T> = { zh, en, mn, ug, ar, ru, ja, ko }
+const bo: T = { ...en,
+  blogs: "དེབ་ཐོ།", projects: "ལས་གྲུབ།", about: "སྐོར།", noPostsYet: "ཡིག་སྒྲིག་མེད།",
+  noProjectsYet: "ལས་གྲུབ་མེད།", aboutNotConfigured: "སྐོར་ཤོག་བཀོད་མེད།",
+  signInToComment: "GitHub ཐོག་ནས་འཛུལ་ནས་མཆན་འཇོག", writeComment: "མཆན་འབྲི།...",
+  post: "གཏོང་།", noComments: "མཆན་མེད།", share: "མི་མང་ལ་གཏོང་།",
+  views: "ལྟ་གྲངས།", comments: "མཆན།", replyTo: "ལན་འདེབས།",
+  pasteImage: "པར་རིས་སྦྱར་ཆོག",
+  overview: "སྤྱིར་བཏང་།", content: "ནང་དོན།", commentsMgmt: "མཆན་དོ་དམ།",
+  aboutPage: "སྐོར་ཤོག", projectsMgmt: "ལས་གྲུབ་དོ་དམ།", settings: "བཀོད་སྒྲིག",
+  loading: "ཁ་ལོ་སྒྱུར་བཞིན།...", save: "ཉར་ཚགས།", cancel: "དོར་བ།",
+  edit: "བཟོ་བཅོས།", delete: "བསུབ་པ།", add: "སྣོན་པ།",
+  enable: "སྤྱོད་འགོ།", disable: "ཆད་པ།",
+  backToBlog: "← དེབ་ཐོར་ལོག", signOut: "ཐོན་པ།",
+  adminRequired: "དོ་དམ་པའི་དབང་ཚད་དགོས།",
+  signInGithub: "GitHub ཐོག་ནས་འཛུལ།",
+  totalViews: "ལྟ་གྲངས་ཡོངས།", totalPosts: "ཡིག་སྒྲིག་གྲངས།",
+  totalComments: "མཆན་གྲངས་ཡོངས།", totalShares: "མི་མང་གཏོང་གྲངས།",
+  topViewed: "མང་ཤོས་ལྟ།", mostCommented: "མཆན་མང་ཤོས།",
+  topViewsSingle: "གཅིག་པུར་མང་ཤོས།", lastUpdated: "གསར་བཅོས་ཐ་མ།",
+  noActivityToday: "དེ་རིང་སུས་ཀྱང་ཁྱེད་ལ་གདུང་མ་བཀལ།",
+  newPost: "ཡིག་སྒྲིག་གསར་པ།", title: "མགོ་བྱང་།", slug: "Slug",
+  description: "འགྲེལ་བཤད།", published: "བསྒྲགས་ཟིན།", saving: "ཉར་བཞིན།...",
+  blogTitle: "དེབ་ཐོའི་མགོ་བྱང་།", footerText: "མཇུག་ཡིག",
+  webhookConfig: "Webhook བཀོད་སྒྲིག", emailConfig: "གློག་འཕྲིན་བཀོད་སྒྲིག",
+  notifySettings: "སྐུལ་འདེད་བཀོད་སྒྲིག", templateVars: "དཔེ་གཞི་འགྱུར་ཚིག",
+  activeConfigs: "གྲུབ་ཟིན་བཀོད་སྒྲིག", siteSettings: "དྲ་ཚིགས་བཀོད་སྒྲིག",
+  language: "སྐད་ཡིག", allColumns: "ཀུན།", column: "ཐོ།",
+  columnPlaceholder: "ཐོར་མིང་འབྲི་ནས་Enter གནོན།",
+  siteSettingsTab: "དྲ་ཚིགས་བཀོད་སྒྲིག", webhookTab: "Webhook སྐུལ་འདེད",
+  emailTab: "གློག་འཕྲིན་སྐུལ་འདེད", imageStorage: "པར་རིས་ཉར་ཚགས།",
+  dufsService: "Dufs ཞབས་ཏོག", githubImageRepo: "GitHub པར་རིས་མཛོད།",
+  expand: "རྒྱ་བསྐྱེད།", collapse: "བསྡུ་བ།",
+}
+
+const translations: Record<Locale, T> = { zh, en, mn, ug, bo, ar, ru, ja, ko }
 
 export function getTranslations(locale: Locale) {
   return translations[locale] || translations.zh

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Card, CardTitle, CardContent } from "@/components/ui/card"
 import { Eye, Share2, MessageSquare, FileText, TrendingUp, Clock } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
+import { AdminLoading } from "@/components/admin-loading"
 
 function PixelCalendar({ selectedDate, onSelect }: { selectedDate: Date; onSelect: (d: Date) => void }) {
   const [viewMonth, setViewMonth] = useState(new Date(selectedDate))
@@ -58,13 +59,35 @@ function Timeline({ date }: { date: Date }) {
   const { t } = useLocale()
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
+    const controller = new AbortController()
     setLoading(true)
-    fetch(`/api/timeline?date=${date.toISOString()}`).then(r => r.json()).then(d => { setEvents(d); setLoading(false) })
+    setLoadError(false)
+    fetch(`/api/timeline?date=${date.toISOString()}`, { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("timeline load failed")
+        const data = await response.json()
+        if (!controller.signal.aborted) setEvents(Array.isArray(data) ? data : [])
+      })
+      .catch(error => {
+        if ((error as Error).name !== "AbortError") {
+          setEvents([])
+          setLoadError(true)
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
   }, [date])
 
-  if (loading) return <div className="flex-1 flex items-center justify-center font-mono text-xs">{t.loading}</div>
+  if (loading) return <AdminLoading size="sm" className="min-h-0 flex-1 p-0" />
+
+  if (loadError) {
+    return <div className="flex-1 flex items-center justify-center font-body text-xs text-red-500">Unable to load timeline</div>
+  }
 
   if (events.length === 0) {
     return <div className="flex-1 flex items-center justify-center font-mono text-xs text-pixel-gray-400">{t.noActivityToday}</div>
@@ -91,11 +114,29 @@ function Timeline({ date }: { date: Date }) {
 export default function OverviewPage() {
   const { t } = useLocale()
   const [stats, setStats] = useState<any>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [statsError, setStatsError] = useState(false)
   const [selectedDate, setSelectedDate] = useState(new Date())
 
-  useEffect(() => { fetch("/api/stats").then(r => r.json()).then(setStats) }, [])
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch("/api/stats", { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("stats load failed")
+        const data = await response.json()
+        if (!controller.signal.aborted) setStats(data)
+      })
+      .catch(error => {
+        if ((error as Error).name !== "AbortError") setStatsError(true)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setStatsLoading(false)
+      })
+    return () => controller.abort()
+  }, [])
 
-  if (!stats) return <div className="flex items-center justify-center h-64 font-mono text-xs">{t.loading}</div>
+  if (statsLoading) return <AdminLoading className="min-h-64" />
+  if (!stats || statsError) return <div className="flex min-h-64 items-center justify-center font-body text-xs text-red-500">Unable to load overview</div>
 
   const cards = [
     { label: t.totalViews, value: stats.totalViews, icon: Eye },

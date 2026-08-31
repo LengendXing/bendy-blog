@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
@@ -16,6 +17,16 @@ export async function POST(req: NextRequest) {
   const existing = await prisma.column.findUnique({ where: { name } })
   if (existing) return NextResponse.json(existing)
   return NextResponse.json(await prisma.column.create({ data: { name } }))
+}
+
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
+  const { id, name } = await req.json()
+  if (!id || !name || name.length > 6) return NextResponse.json({ error: "Name must be 1-6 characters" }, { status: 400 })
+  const existing = await prisma.column.findFirst({ where: { name, NOT: { id } } })
+  if (existing) return NextResponse.json({ error: "Name already exists" }, { status: 400 })
+  return NextResponse.json(await prisma.column.update({ where: { id }, data: { name } }))
 }
 
 export async function DELETE(req: NextRequest) {
