@@ -5,7 +5,7 @@ import { useSession, signIn, signOut } from "next-auth/react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { LocaleProvider, useLocale } from "@/components/locale-provider"
-import { LayoutDashboard, MessageSquare, FileText, User, FolderGit2, Bell, LogOut, Menu, X } from "lucide-react"
+import { LayoutDashboard, MessageSquare, FileText, User, FolderGit2, Bell, LogOut, Menu, X, Image as ImageIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminLoading } from "@/components/admin-loading"
 import { AdminToastProvider } from "@/components/admin/admin-toast"
@@ -24,6 +24,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     { href: "/admin/comments", label: t.commentsMgmt, icon: MessageSquare },
     { href: "/admin/about", label: t.aboutPage, icon: User },
     { href: "/admin/projects", label: t.projectsMgmt, icon: FolderGit2 },
+    { href: "/admin/images", label: t.orphanImages, icon: ImageIcon },
     { href: "/admin/settings", label: t.settings, icon: Bell },
   ]
 

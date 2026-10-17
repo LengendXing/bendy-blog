@@ -5,6 +5,7 @@ import { Eye, Share2, MessageSquare, FileText, TrendingUp, Clock } from "lucide-
 import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
 import { useAdminToast } from "@/components/admin/admin-toast"
+import { RetryNotice } from "@/components/admin/retry-notice"
 import { apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
 
 function PixelCalendar({ selectedDate, onSelect }: { selectedDate: Date; onSelect: (d: Date) => void }) {
@@ -63,6 +64,7 @@ function Timeline({ date }: { date: Date }) {
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -82,12 +84,12 @@ function Timeline({ date }: { date: Date }) {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [date, t, toast])
+  }, [date, reloadKey, t, toast])
 
   if (loading) return <AdminLoading size="sm" className="min-h-0 flex-1 p-0" />
 
   if (loadError) {
-    return <div className="flex-1 flex items-center justify-center font-body text-xs text-red-500">Unable to load timeline</div>
+    return <RetryNotice message={t.loadFailed} retryLabel={t.retry} onRetry={() => setReloadKey(key => key + 1)} />
   }
 
   if (events.length === 0) {
@@ -118,10 +120,13 @@ export default function OverviewPage() {
   const [stats, setStats] = useState<any>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState(false)
+  const [statsReloadKey, setStatsReloadKey] = useState(0)
   const [selectedDate, setSelectedDate] = useState(new Date())
 
   useEffect(() => {
     const controller = new AbortController()
+    setStatsLoading(true)
+    setStatsError(false)
     apiJson<any>("/api/stats", { signal: controller.signal })
       .then(data => {
         if (!controller.signal.aborted) setStats(data)
@@ -135,10 +140,12 @@ export default function OverviewPage() {
         if (!controller.signal.aborted) setStatsLoading(false)
       })
     return () => controller.abort()
-  }, [t, toast])
+  }, [statsReloadKey, t, toast])
 
   if (statsLoading) return <AdminLoading className="min-h-64" />
-  if (!stats || statsError) return <div className="flex min-h-64 items-center justify-center font-body text-xs text-red-500">Unable to load overview</div>
+  if (!stats || statsError) {
+    return <RetryNotice message={t.loadFailed} retryLabel={t.retry} onRetry={() => setStatsReloadKey(key => key + 1)} />
+  }
 
   const cards = [
     { label: t.totalViews, value: stats.totalViews, icon: Eye },

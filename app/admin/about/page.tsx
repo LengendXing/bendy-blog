@@ -7,7 +7,10 @@ import { useLocale } from "@/components/locale-provider"
 import { locales, localeNames, Locale } from "@/lib/i18n"
 import { AdminLoading } from "@/components/admin-loading"
 import { useAdminToast } from "@/components/admin/admin-toast"
+import { RetryNotice } from "@/components/admin/retry-notice"
+import { confirmDiscardChanges, useUnsavedChanges } from "@/components/admin/use-unsaved-changes"
 import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
+import { stableSnapshot } from "@/lib/unsaved-changes"
 
 export default function AboutAdminPage() {
   const { t } = useLocale()
@@ -19,13 +22,25 @@ export default function AboutAdminPage() {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [baseline, setBaseline] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const formSnapshot = stableSnapshot(data)
+  const dirty = baseline !== null && formSnapshot !== baseline
+  useUnsavedChanges(dirty, t.unsavedChanges)
 
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
     setLoadError(false)
+    setBaseline(null)
     apiJson<any>(`/api/about?locale=${activeLocale}`, { signal: controller.signal })
-      .then(d => setData(d.name ? d : { name: "", bio: "", avatar: "", markdown: "", links: {} }))
+      .then(d => {
+        if (controller.signal.aborted) return
+        const loaded = d.name ? d : { name: "", bio: "", avatar: "", markdown: "", links: {} }
+        setData(loaded)
+        setBaseline(stableSnapshot(loaded))
+      })
       .catch(error => {
         if (isAbortError(error)) return
         setData({ name: "", bio: "", avatar: "", markdown: "", links: {} })
@@ -36,9 +51,16 @@ export default function AboutAdminPage() {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [activeLocale, t, toast])
+  }, [activeLocale, reloadKey, t, toast])
+
+  function switchLocale(next: Locale) {
+    if (next === activeLocale) return
+    if (dirty && !confirmDiscardChanges(t.unsavedChanges)) return
+    setActiveLocale(next)
+  }
 
   async function save() {
+    const snapshotAtSave = formSnapshot
     setSaving(true)
     try {
       await apiFetch("/api/about", {
@@ -46,9 +68,10 @@ export default function AboutAdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale: activeLocale, ...data }),
       })
+      setBaseline(snapshotAtSave)
       toast.success(t.savedSuccessfully)
     } catch (error) {
-      toast.error(getApiErrorMessage(error, t))
+      toast.error(getApiErrorMessage(error, t), { label: t.retry, onClick: () => void save() })
     } finally {
       setSaving(false)
     }
@@ -71,7 +94,7 @@ export default function AboutAdminPage() {
 
       <div className="flex gap-1 mb-6 flex-wrap">
         {locales.map(l => (
-          <button key={l} onClick={() => setActiveLocale(l)}
+          <button key={l} onClick={() => switchLocale(l)}
             className={`font-mono text-xs px-3 py-1.5 border-2 transition-colors ${activeLocale === l
               ? "border-pixel-black dark:border-pixel-white bg-pixel-black dark:bg-pixel-white text-pixel-white dark:text-pixel-black"
               : "border-pixel-gray-300 dark:border-pixel-gray-700 hover:border-pixel-black dark:hover:border-pixel-white"}`}>
@@ -83,7 +106,11 @@ export default function AboutAdminPage() {
       {loading ? (
         <AdminLoading size="md" className="min-h-32" />
       ) : loadError ? (
-        <div className="flex min-h-32 items-center justify-center font-body text-xs text-red-500" role="alert">{t.loadFailed}</div>
+        <RetryNotice
+          message={t.loadFailed}
+          retryLabel={t.retry}
+          onRetry={() => setReloadKey(key => key + 1)}
+        />
       ) : (
         <div className="space-y-4">
           <div><label className="font-mono text-xs block mb-1">{t.title} ({localeNames[activeLocale]})</label><Input value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} /></div>

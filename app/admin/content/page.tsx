@@ -10,7 +10,10 @@ import { useLocale } from "@/components/locale-provider"
 import { PixelStatus } from "@/components/pixel-status"
 import { AdminLoading } from "@/components/admin-loading"
 import { useAdminToast } from "@/components/admin/admin-toast"
+import { RetryNotice } from "@/components/admin/retry-notice"
+import { confirmDiscardChanges, useUnsavedChanges } from "@/components/admin/use-unsaved-changes"
 import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
+import { stableSnapshot } from "@/lib/unsaved-changes"
 
 const PAGE_SIZE = 15
 type CreateStage = "saving" | "refreshing" | "opening" | null
@@ -24,6 +27,8 @@ export default function ContentPage() {
   const [columns, setColumns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [newPostBaseline, setNewPostBaseline] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const [newSlug, setNewSlug] = useState("")
@@ -43,9 +48,14 @@ export default function ContentPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
+  const newPostSnapshot = stableSnapshot({ newTitle, newSlug, newDescription, newColumnId })
+  const newPostDirty = showNew && newPostBaseline !== null && newPostSnapshot !== newPostBaseline
+  useUnsavedChanges(newPostDirty, t.unsavedChanges)
+
   useEffect(() => {
     const controller = new AbortController()
     setLoadError(false)
+    setLoading(true)
     Promise.all([
       apiJson<any[]>("/api/blog", { signal: controller.signal }),
       apiJson<any[]>("/api/columns", { signal: controller.signal }),
@@ -63,7 +73,7 @@ export default function ContentPage() {
       if (!controller.signal.aborted) setLoading(false)
     })
     return () => controller.abort()
-  }, [t, toast])
+  }, [reloadKey, t, toast])
 
   useEffect(() => {
     if (!showNew && !createStage) return
@@ -116,6 +126,21 @@ export default function ContentPage() {
     setNewDescription("")
     setNewColumnId(null)
     setCreateError("")
+    setNewPostBaseline(null)
+  }
+
+  function openNewPost() {
+    const blank = { newTitle: "", newSlug: "", newDescription: "", newColumnId: null }
+    setNewTitle(""); setNewSlug(""); setNewDescription(""); setNewColumnId(null)
+    setCreateError("")
+    setNewPostBaseline(stableSnapshot(blank))
+    setShowNew(true)
+  }
+
+  function cancelNewPost() {
+    if (newPostDirty && !confirmDiscardChanges(t.unsavedChanges)) return
+    setShowNew(false)
+    resetNewPost()
   }
 
   async function createPost(event?: React.FormEvent<HTMLFormElement>) {
@@ -195,7 +220,9 @@ export default function ContentPage() {
   }
 
   if (loading) return <AdminLoading className="min-h-64" />
-  if (loadError) return <div className="flex min-h-64 items-center justify-center font-body text-xs text-red-500" role="alert">{t.loadFailed}</div>
+  if (loadError) {
+    return <RetryNotice message={t.loadFailed} retryLabel={t.retry} onRetry={() => setReloadKey(key => key + 1)} />
+  }
 
   return (
     <div className="relative min-h-[360px] overflow-hidden" aria-busy={deletingPost}>
@@ -204,7 +231,7 @@ export default function ContentPage() {
         <h1 className="font-mono text-sm uppercase tracking-widest">// {t.content}</h1>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => { setShowImport(!showImport); setImportResults(null) }}><Upload className="w-3 h-3 mr-2" />Import</Button>
-          <Button size="sm" onClick={() => { setShowNew(true); setCreateError("") }}><Plus className="w-3 h-3 mr-2" />{t.newPost}</Button>
+          <Button size="sm" onClick={openNewPost}><Plus className="w-3 h-3 mr-2" />{t.newPost}</Button>
         </div>
       </div>
 
@@ -262,7 +289,7 @@ export default function ContentPage() {
                   <p className="font-mono text-[10px] text-pixel-gray-500 dark:text-pixel-gray-400 mt-1">// NEW ENTRY</p>
                 </div>
               </div>
-              <button type="button" onClick={() => { setShowNew(false); resetNewPost() }} title={t.cancel} className="p-1 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
+              <button type="button" onClick={cancelNewPost} title={t.cancel} className="p-1 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -289,7 +316,7 @@ export default function ContentPage() {
 
             {createError && <p className="mt-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{createError}</p>}
             <div className="flex items-center justify-end gap-2 border-t-2 border-pixel-black dark:border-pixel-white mt-5 pt-4">
-              <Button type="button" variant="ghost" onClick={() => { setShowNew(false); resetNewPost() }}>{t.cancel}</Button>
+              <Button type="button" variant="ghost" onClick={cancelNewPost}>{t.cancel}</Button>
               <Button type="submit" disabled={creating}><Plus className="w-3 h-3 mr-2" />{t.add}</Button>
             </div>
           </form>

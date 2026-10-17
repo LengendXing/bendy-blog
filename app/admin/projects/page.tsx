@@ -8,7 +8,10 @@ import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
 import { PixelImage } from "@/components/pixel-image"
 import { useAdminToast } from "@/components/admin/admin-toast"
+import { RetryNotice } from "@/components/admin/retry-notice"
+import { confirmDiscardChanges, useUnsavedChanges } from "@/components/admin/use-unsaved-changes"
 import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
+import { stableSnapshot } from "@/lib/unsaved-changes"
 
 export default function ProjectsAdminPage() {
   const { t } = useLocale()
@@ -20,9 +23,18 @@ export default function ProjectsAdminPage() {
   const [showNew, setShowNew] = useState(false)
   const [action, setAction] = useState<"save" | "delete" | "">("")
   const [form, setForm] = useState({ title: "", description: "", url: "", logoUrl: "", sortOrder: 0 })
+  const [baseline, setBaseline] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const formOpen = showNew || editId !== null
+  const formSnapshot = stableSnapshot(form)
+  const dirty = formOpen && baseline !== null && formSnapshot !== baseline
+  useUnsavedChanges(dirty, t.unsavedChanges)
 
   useEffect(() => {
     const controller = new AbortController()
+    setLoading(true)
+    setLoadError(false)
     apiJson<any[]>("/api/projects", { signal: controller.signal })
       .then(data => {
         if (!controller.signal.aborted) setProjects(Array.isArray(data) ? data : [])
@@ -37,10 +49,21 @@ export default function ProjectsAdminPage() {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [t, toast])
+  }, [reloadKey, t, toast])
 
-  function resetForm() { setForm({ title: "", description: "", url: "", logoUrl: "", sortOrder: 0 }); setEditId(null); setShowNew(false) }
-  function startEdit(p: any) { setEditId(p.id); setShowNew(false); setForm({ title: p.title, description: p.description || "", url: p.url || "", logoUrl: p.logoUrl || "", sortOrder: p.sortOrder }) }
+  function resetForm() { setForm({ title: "", description: "", url: "", logoUrl: "", sortOrder: 0 }); setEditId(null); setShowNew(false); setBaseline(null) }
+  function openNew() {
+    const blank = { title: "", description: "", url: "", logoUrl: "", sortOrder: 0 }
+    setForm(blank); setEditId(null); setShowNew(true); setBaseline(stableSnapshot(blank))
+  }
+  function startEdit(p: any) {
+    const next = { title: p.title, description: p.description || "", url: p.url || "", logoUrl: p.logoUrl || "", sortOrder: p.sortOrder }
+    setEditId(p.id); setShowNew(false); setForm(next); setBaseline(stableSnapshot(next))
+  }
+  function cancelForm() {
+    if (dirty && !confirmDiscardChanges(t.unsavedChanges)) return
+    resetForm()
+  }
 
   async function save() {
     if (!form.title) return
@@ -57,7 +80,7 @@ export default function ProjectsAdminPage() {
       toast.success(t.savedSuccessfully)
       resetForm()
     } catch (error) {
-      toast.error(getApiErrorMessage(error, t))
+      toast.error(getApiErrorMessage(error, t), { label: t.retry, onClick: () => void save() })
     } finally {
       setAction("")
     }
@@ -79,7 +102,15 @@ export default function ProjectsAdminPage() {
   }
 
   if (loading) return <AdminLoading className="min-h-64" />
-  if (loadError) return <div className="flex min-h-64 items-center justify-center font-body text-xs text-red-500" role="alert">Unable to load projects</div>
+  if (loadError) {
+    return (
+      <RetryNotice
+        message={t.loadFailed}
+        retryLabel={t.retry}
+        onRetry={() => setReloadKey(key => key + 1)}
+      />
+    )
+  }
 
   return (
     <div className="relative min-h-[360px] overflow-hidden" aria-busy={Boolean(action)}>
@@ -97,7 +128,7 @@ export default function ProjectsAdminPage() {
           <div><label className="font-mono text-xs block mb-1">{t.description}</label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
           <div className="flex gap-2">
             <Button size="sm" onClick={save}><Check className="w-3 h-3 mr-1" />{editId ? t.save : t.add}</Button>
-            <Button size="sm" variant="ghost" onClick={resetForm}><X className="w-3 h-3 mr-1" />{t.cancel}</Button>
+            <Button size="sm" variant="ghost" onClick={cancelForm}><X className="w-3 h-3 mr-1" />{t.cancel}</Button>
           </div>
         </div>
       )}
@@ -105,7 +136,7 @@ export default function ProjectsAdminPage() {
       <div>
         <div className="border-b-2 border-pixel-black dark:border-pixel-white mb-0 flex justify-end pb-2">
           {!showNew && !editId && (
-            <button onClick={() => setShowNew(true)} className="font-mono text-sm hover:opacity-70" title={t.add}>＋</button>
+            <button onClick={openNew} className="font-mono text-sm hover:opacity-70" title={t.add}>＋</button>
           )}
         </div>
         {projects.map((p, index) => (

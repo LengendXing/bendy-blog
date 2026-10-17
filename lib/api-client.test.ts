@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { ApiError, apiFetch, apiJson, getApiErrorMessage, isAbortError } from "./api-client"
+import { ApiError, apiFetch, apiJson, apiJsonWithRetry, getApiErrorMessage, isAbortError } from "./api-client"
 
 const messages = {
   requestFailed: "request failed",
@@ -107,4 +107,100 @@ test("getApiErrorMessage maps network errors and unknown values", () => {
 test("isAbortError only matches AbortError instances", () => {
   assert.equal(isAbortError(new DOMException("aborted", "AbortError")), true)
   assert.equal(isAbortError(new Error("aborted")), false)
+})
+
+test("apiJsonWithRetry retries transient GET failures until success", async () => {
+  let calls = 0
+  const restore = stubFetch(async () => {
+    calls += 1
+    return calls < 3 ? jsonResponse({ error: "unavailable" }, 503) : jsonResponse({ ok: true })
+  })
+  try {
+    const data = await apiJsonWithRetry<{ ok: boolean }>("/api/test", undefined, { retries: 2, baseDelayMs: 0 })
+    assert.deepEqual(data, { ok: true })
+    assert.equal(calls, 3)
+  } finally {
+    restore()
+  }
+})
+
+test("apiJsonWithRetry retries network failures", async () => {
+  let calls = 0
+  const restore = stubFetch(async () => {
+    calls += 1
+    if (calls === 1) throw new TypeError("fetch failed")
+    return jsonResponse({ ok: true })
+  })
+  try {
+    const data = await apiJsonWithRetry<{ ok: boolean }>("/api/test", undefined, { retries: 1, baseDelayMs: 0 })
+    assert.deepEqual(data, { ok: true })
+    assert.equal(calls, 2)
+  } finally {
+    restore()
+  }
+})
+
+test("apiJsonWithRetry does not retry non-idempotent methods", async () => {
+  let calls = 0
+  const restore = stubFetch(async () => {
+    calls += 1
+    return jsonResponse({ error: "unavailable" }, 503)
+  })
+  try {
+    await assert.rejects(
+      apiJsonWithRetry("/api/test", { method: "POST" }, { retries: 3, baseDelayMs: 0 }),
+      (error: unknown) => error instanceof ApiError && error.status === 503,
+    )
+    assert.equal(calls, 1)
+  } finally {
+    restore()
+  }
+})
+
+test("apiJsonWithRetry does not retry client errors", async () => {
+  let calls = 0
+  const restore = stubFetch(async () => {
+    calls += 1
+    return jsonResponse({ error: "bad request" }, 400)
+  })
+  try {
+    await assert.rejects(apiJsonWithRetry("/api/test", undefined, { retries: 2, baseDelayMs: 0 }))
+    assert.equal(calls, 1)
+  } finally {
+    restore()
+  }
+})
+
+test("apiJsonWithRetry gives up after the configured retry budget", async () => {
+  let calls = 0
+  const restore = stubFetch(async () => {
+    calls += 1
+    return jsonResponse({ error: "unavailable" }, 502)
+  })
+  try {
+    await assert.rejects(
+      apiJsonWithRetry("/api/test", undefined, { retries: 2, baseDelayMs: 0 }),
+      (error: unknown) => error instanceof ApiError && error.status === 502,
+    )
+    assert.equal(calls, 3)
+  } finally {
+    restore()
+  }
+})
+
+test("apiJsonWithRetry stops when the caller aborts during backoff", async () => {
+  let calls = 0
+  const controller = new AbortController()
+  const restore = stubFetch(async () => {
+    calls += 1
+    return jsonResponse({ error: "unavailable" }, 503)
+  })
+  try {
+    const pending = apiJsonWithRetry("/api/test", { signal: controller.signal }, { retries: 3, baseDelayMs: 50 })
+    setTimeout(() => controller.abort(), 5)
+    await assert.rejects(pending, (error: unknown) => isAbortError(error))
+    assert.equal(calls, 1)
+  } finally {
+    restore()
+  }
 })

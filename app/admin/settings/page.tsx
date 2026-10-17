@@ -9,7 +9,10 @@ import { Trash2, Plus, Eye, EyeOff, ExternalLink, Github, Pencil, Search, UserPl
 import { useLocale } from "@/components/locale-provider"
 import { PixelImage } from "@/components/pixel-image"
 import { useAdminToast } from "@/components/admin/admin-toast"
+import { RetryNotice } from "@/components/admin/retry-notice"
+import { useUnsavedChanges } from "@/components/admin/use-unsaved-changes"
 import { ApiError, apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
+import { stableSnapshot } from "@/lib/unsaved-changes"
 
 interface AdminUser {
   username: string
@@ -56,6 +59,7 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<"site" | "webhook" | "email" | "admins">("site")
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   const [blogTitle, setBlogTitle] = useState("Bendy Blog")
   const [footerText, setFooterText] = useState("Built with nextjs & By @SunChengXin")
@@ -66,6 +70,11 @@ export default function SettingsPage() {
   const [githubImageRepo, setGithubImageRepo] = useState("")
   const [githubImageToken, setGithubImageToken] = useState("")
   const [savingSite, setSavingSite] = useState(false)
+  const [siteBaseline, setSiteBaseline] = useState<string | null>(null)
+
+  const siteSnapshot = stableSnapshot({ blogTitle, footerText, dufsEnabled, dufsUrl, dufsUser, dufsPass, githubImageRepo, githubImageToken })
+  const siteDirty = siteBaseline !== null && siteSnapshot !== siteBaseline
+  useUnsavedChanges(siteDirty, t.unsavedChanges)
 
   const [wf, setWf] = useState({ url: "", method: "POST", headers: "{}", body: '{"text":"{{event}}: {{title}} - {{url}} ({{views}} views)"}' })
   const [ef, setEf] = useState({ to: "", template: "<h2>{{event}}</h2><p>Post: {{title}}</p><p>URL: {{url}}</p><p>Views: {{views}}</p>" })
@@ -175,20 +184,34 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const controller = new AbortController()
+    setLoading(true)
+    setLoadError(false)
+    setSiteBaseline(null)
     Promise.all([
       apiJson<any>("/api/config", { signal: controller.signal }),
       apiJson<any[]>("/api/notify", { signal: controller.signal }),
     ]).then(([cfg, notifs]) => {
       if (controller.signal.aborted) return
       const configuredTitle = cfg.blogTitle?.trim()
-      if (configuredTitle && !["BENDY BLOG", "笨迪博客 BENDYBLOG", "笨迪博客 BENDYBLOG | 码农修炼笔记"].includes(configuredTitle.toUpperCase())) setBlogTitle(configuredTitle)
-      if (cfg.footerText) setFooterText(cfg.footerText)
-      setDufsEnabled(cfg.dufsEnabled === "true")
-      if (cfg.dufsUrl) setDufsUrl(cfg.dufsUrl)
-      if (cfg.dufsUser) setDufsUser(cfg.dufsUser)
-      if (cfg.dufsPass) setDufsPass(cfg.dufsPass)
-      if (cfg.githubImageRepo) setGithubImageRepo(cfg.githubImageRepo)
-      if (cfg.githubImageToken) setGithubImageToken(cfg.githubImageToken)
+      const loadedSite = {
+        blogTitle: configuredTitle && !["BENDY BLOG", "笨迪博客 BENDYBLOG", "笨迪博客 BENDYBLOG | 码农修炼笔记"].includes(configuredTitle.toUpperCase()) ? configuredTitle : blogTitle,
+        footerText: cfg.footerText || footerText,
+        dufsEnabled: cfg.dufsEnabled === "true",
+        dufsUrl: cfg.dufsUrl || "",
+        dufsUser: cfg.dufsUser || "",
+        dufsPass: cfg.dufsPass || "",
+        githubImageRepo: cfg.githubImageRepo || "",
+        githubImageToken: cfg.githubImageToken || "",
+      }
+      setBlogTitle(loadedSite.blogTitle)
+      setFooterText(loadedSite.footerText)
+      setDufsEnabled(loadedSite.dufsEnabled)
+      setDufsUrl(loadedSite.dufsUrl)
+      setDufsUser(loadedSite.dufsUser)
+      setDufsPass(loadedSite.dufsPass)
+      setGithubImageRepo(loadedSite.githubImageRepo)
+      setGithubImageToken(loadedSite.githubImageToken)
+      setSiteBaseline(stableSnapshot(loadedSite))
       setConfigs(Array.isArray(notifs) ? notifs : [])
     }).catch(error => {
       if (isAbortError(error)) return
@@ -200,7 +223,7 @@ export default function SettingsPage() {
     })
     loadAdmins()
     return () => controller.abort()
-  }, [loadAdmins, t, toast])
+  }, [loadAdmins, reloadKey, t, toast])
 
   useEffect(() => {
     githubSearchAbort.current?.abort()
@@ -226,15 +249,17 @@ export default function SettingsPage() {
 
   async function saveSite() {
     if (savingSite) return
+    const snapshotAtSave = siteSnapshot
     setSavingSite(true)
     try {
       await apiFetch("/api/config", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blogTitle, footerText, dufsEnabled: dufsEnabled ? "true" : "false", dufsUrl, dufsUser, dufsPass, githubImageRepo, githubImageToken }),
       })
+      setSiteBaseline(snapshotAtSave)
       toast.success(t.savedSuccessfully)
     } catch (error) {
-      toast.error(getApiErrorMessage(error, t))
+      toast.error(getApiErrorMessage(error, t), { label: t.retry, onClick: () => void saveSite() })
     } finally {
       setSavingSite(false)
     }
@@ -362,7 +387,15 @@ export default function SettingsPage() {
   }
 
   if (loading) return <AdminLoading className="min-h-64" />
-  if (loadError) return <div className="flex min-h-64 items-center justify-center font-body text-xs text-red-500" role="alert">Unable to load settings</div>
+  if (loadError) {
+    return (
+      <RetryNotice
+        message={t.loadFailed}
+        retryLabel={t.retry}
+        onRetry={() => setReloadKey(key => key + 1)}
+      />
+    )
+  }
 
   return (
     <div>

@@ -12,7 +12,10 @@ import { MarkdownTable } from "@/components/markdown-table"
 import { AdminLoading } from "@/components/admin-loading"
 import { PixelMarkdownImage } from "@/components/pixel-image"
 import { useAdminToast } from "@/components/admin/admin-toast"
+import { RetryNotice } from "@/components/admin/retry-notice"
+import { confirmDiscardChanges, useUnsavedChanges } from "@/components/admin/use-unsaved-changes"
 import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
+import { stableSnapshot } from "@/lib/unsaved-changes"
 
 function EditContent() {
   const params = useSearchParams()
@@ -33,7 +36,13 @@ function EditContent() {
   const [saving, setSaving] = useState(false)
   const [savedFeedback, setSavedFeedback] = useState(false)
   const [columnAction, setColumnAction] = useState(false)
+  const [baseline, setBaseline] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const formSnapshot = stableSnapshot({ title, description, markdown, published, columnId, publishDate })
+  const dirty = post !== null && baseline !== null && formSnapshot !== baseline
+  useUnsavedChanges(dirty, t.unsavedChanges)
 
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -44,6 +53,7 @@ function EditContent() {
     setLoading(true)
     setLoadError("")
     setPost(null)
+    setBaseline(null)
     if (!id) {
       setLoadError("Missing post id")
       setLoading(false)
@@ -58,11 +68,20 @@ function EditContent() {
       if (!p) throw new Error("Post not found")
       const file = await apiJson<{ content?: string }>(`/api/github?path=${encodeURIComponent(p.githubPath)}`, { signal: controller.signal })
       if (controller.signal.aborted) return
+      const loaded = {
+        title: p.title,
+        description: p.description || "",
+        markdown: file.content || "",
+        published: Boolean(p.published),
+        columnId: p.columnId || null,
+        publishDate: p.publishDate ? new Date(p.publishDate).toISOString().slice(0, 10) : "",
+      }
       setColumns(Array.isArray(cols) ? cols : [])
-      setPost(p); setTitle(p.title); setDescription(p.description || "")
-      setPublished(p.published); setColumnId(p.columnId || null)
-      setPublishDate(p.publishDate ? new Date(p.publishDate).toISOString().slice(0, 10) : "")
-      setMarkdown(file.content || "")
+      setPost(p); setTitle(loaded.title); setDescription(loaded.description)
+      setPublished(loaded.published); setColumnId(loaded.columnId)
+      setPublishDate(loaded.publishDate)
+      setMarkdown(loaded.markdown)
+      setBaseline(stableSnapshot(loaded))
     }).catch(error => {
       if (isAbortError(error)) return
       const message = getApiErrorMessage(error, t)
@@ -72,7 +91,7 @@ function EditContent() {
       if (!controller.signal.aborted) setLoading(false)
     })
     return () => controller.abort()
-  }, [id, t, toast])
+  }, [id, reloadKey, t, toast])
 
   async function createColumn(name: string) {
     if (columnAction) return null
@@ -106,6 +125,7 @@ function EditContent() {
 
   async function save() {
     if (saving || savedFeedback) return
+    const snapshotAtSave = formSnapshot
     setSaving(true)
     try {
       await apiFetch("/api/blog", {
@@ -114,16 +134,30 @@ function EditContent() {
       })
     } catch (error) {
       setSaving(false)
-      toast.error(getApiErrorMessage(error, t))
+      toast.error(getApiErrorMessage(error, t), { label: t.retry, onClick: () => void save() })
       return
     }
     setSaving(false)
+    setBaseline(snapshotAtSave)
     setSavedFeedback(true)
     saveTimer.current = setTimeout(() => router.push("/admin/content"), 2000)
   }
 
+  function goBack() {
+    if (dirty && !confirmDiscardChanges(t.unsavedChanges)) return
+    router.push("/admin/content")
+  }
+
   if (loading) return <AdminLoading className="min-h-64" />
-  if (!post) return <div className="flex min-h-64 items-center justify-center font-body text-xs text-red-500" role="alert">{loadError || "Unable to load post"}</div>
+  if (!post) {
+    return (
+      <RetryNotice
+        message={loadError || t.loadFailed}
+        retryLabel={t.retry}
+        onRetry={() => setReloadKey(key => key + 1)}
+      />
+    )
+  }
 
   return (
     <div className="relative flex h-full min-h-[520px] flex-col overflow-hidden" aria-busy={columnAction}>
@@ -134,7 +168,7 @@ function EditContent() {
         />
       )}
       <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
-        <Button size="sm" variant="ghost" onClick={() => router.push("/admin/content")}>{t.backToBlog}</Button>
+        <Button size="sm" variant="ghost" onClick={goBack}>{t.backToBlog}</Button>
         <Input value={title} onChange={e => setTitle(e.target.value)} className="max-w-[180px]" placeholder={t.title} />
         <Input value={description} onChange={e => setDescription(e.target.value)} className="max-w-[180px]" placeholder={t.description} />
         <ColumnSelect columns={columns} value={columnId} onChange={setColumnId} onCreate={createColumn} onUpdate={updateColumn} placeholder={t.allColumns} allowCreate />

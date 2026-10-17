@@ -39,7 +39,13 @@ type T = {
   lastAdminCannotBeRemoved: string; replaceAdmin: string; removeAdminConfirm: string; currentUser: string
   soleAdminCannotBeReplaced: string; adminConfigConflict: string
   requestFailed: string; networkError: string; sessionExpired: string; permissionDenied: string
-  notifications: string
+  notifications: string; retry: string; unsavedChanges: string
+  orphanImages: string; orphanImagesHint: string; scanImages: string; scanning: string
+  scanAgain: string; scanFailed: string; noOrphanImages: string; orphanCandidates: string
+  totalImages: string; sourceLabel: string; pathLabel: string; sizeLabel: string
+  modifiedLabel: string; ageLabel: string; selectAll: string; clearSelection: string
+  deleteSelected: string; deleting: string; confirmDeleteOrphans: string; deleteResult: string
+  storageNotConfigured: string; orphanSafetyNote: string; selectedCount: string
 }
 
 const zh: T = {
@@ -85,6 +91,18 @@ const zh: T = {
   sessionExpired: "登录已失效，请重新登录",
   permissionDenied: "没有权限执行此操作",
   notifications: "通知",
+  retry: "重试", unsavedChanges: "有未保存的更改，确定离开吗？",
+  orphanImages: "图片清理",
+  orphanImagesHint: "扫描远程图片存储中未被文章、关于页、项目、评论或站点配置引用的文件。仅列出存在超过 24 小时的候选，删除前需人工确认。",
+  scanImages: "扫描孤儿图片", scanning: "扫描中...", scanAgain: "重新扫描", scanFailed: "扫描失败，请重试",
+  noOrphanImages: "没有发现孤儿图片", orphanCandidates: "孤儿候选", totalImages: "图片总数",
+  sourceLabel: "来源", pathLabel: "路径", sizeLabel: "大小", modifiedLabel: "修改时间", ageLabel: "存在时长",
+  selectAll: "全选", clearSelection: "清除选择", deleteSelected: "删除选中", deleting: "删除中...",
+  confirmDeleteOrphans: "确定删除 {{count}} 个孤儿图片吗？此操作不可恢复。",
+  deleteResult: "已删除 {{deleted}} 个，跳过 {{skipped}} 个，失败 {{failed}} 个",
+  storageNotConfigured: "未配置远程图片存储（Dufs 或 GitHub 图片仓库），无法扫描。",
+  orphanSafetyNote: "引用检查按文件名保守匹配；仍被引用的文件不会进入候选。",
+  selectedCount: "已选 {{count}} 项",
 }
 
 const en: T = {
@@ -130,6 +148,18 @@ const en: T = {
   sessionExpired: "Your session has expired. Please sign in again.",
   permissionDenied: "You do not have permission to perform this action.",
   notifications: "Notifications",
+  retry: "Retry", unsavedChanges: "You have unsaved changes. Leave anyway?",
+  orphanImages: "Image Cleanup",
+  orphanImagesHint: "Scans remote image storage for files not referenced by posts, the about page, projects, comments or site settings. Only files older than 24 hours are listed, and deletion always requires confirmation.",
+  scanImages: "Scan orphan images", scanning: "Scanning...", scanAgain: "Scan again", scanFailed: "Scan failed. Please try again.",
+  noOrphanImages: "No orphan images found", orphanCandidates: "Orphan candidates", totalImages: "Total images",
+  sourceLabel: "Source", pathLabel: "Path", sizeLabel: "Size", modifiedLabel: "Modified", ageLabel: "Age",
+  selectAll: "Select all", clearSelection: "Clear selection", deleteSelected: "Delete selected", deleting: "Deleting...",
+  confirmDeleteOrphans: "Delete {{count}} orphan images? This cannot be undone.",
+  deleteResult: "Deleted {{deleted}}, skipped {{skipped}}, failed {{failed}}",
+  storageNotConfigured: "Remote image storage (Dufs or GitHub image repo) is not configured, so scanning is unavailable.",
+  orphanSafetyNote: "Reference checks match file names conservatively; files still referenced are never listed.",
+  selectedCount: "{{count}} selected",
 }
 
 const mn: T = { ...en,

@@ -33,6 +33,7 @@ export default function CommentsPage() {
   const [comments, setComments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [editId, setEditId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState("")
   const [search, setSearch] = useState("")
@@ -43,6 +44,8 @@ export default function CommentsPage() {
 
   useEffect(() => {
     const controller = new AbortController()
+    setLoading(true)
+    setLoadError(false)
     apiJson<any[]>("/api/comments", { signal: controller.signal })
       .then(data => {
         if (controller.signal.aborted) return
@@ -59,7 +62,7 @@ export default function CommentsPage() {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [t, toast])
+  }, [reloadKey, t, toast])
 
   useEffect(() => {
     if (!drawerSlug) return
@@ -251,7 +254,12 @@ export default function CommentsPage() {
   return (
     <div>
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.commentsMgmt}</h1>
-      {loadError && <p className="mb-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{t.loadFailed}</p>}
+      {loadError && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 border-l-2 border-red-500 pl-2" role="alert">
+          <p className="font-body text-xs text-red-500">{t.loadFailed}</p>
+          <Button size="sm" variant="outline" onClick={() => setReloadKey(key => key + 1)}>{t.retry}</Button>
+        </div>
+      )}
 
       <div className="flex items-center gap-0 mb-4 max-w-sm">
         <input value={search} onChange={e => setSearch(e.target.value)}

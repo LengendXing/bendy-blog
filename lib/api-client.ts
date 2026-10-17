@@ -68,6 +68,72 @@ export async function apiJson<T>(input: RequestInfo | URL, init?: RequestInit): 
   return response.json() as Promise<T>
 }
 
+export type RetryOptions = {
+  /** Number of retries after the first attempt. Defaults to 2. */
+  retries?: number
+  /** Base delay in milliseconds; doubles after every failed attempt. Defaults to 400. */
+  baseDelayMs?: number
+}
+
+const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504])
+
+function requestMethod(init?: RequestInit): string {
+  return (init?.method || "GET").toUpperCase()
+}
+
+export function isRetryableError(error: unknown): boolean {
+  if (isAbortError(error)) return false
+  if (error instanceof ApiError) return RETRYABLE_STATUSES.has(error.status)
+  // fetch() rejects with TypeError for DNS failures, offline state and resets.
+  return error instanceof TypeError
+}
+
+function waitForRetry(ms: number, signal?: AbortSignal | null): Promise<void> {
+  if (ms <= 0) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"))
+      return
+    }
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(new DOMException("Aborted", "AbortError"))
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener("abort", onAbort, { once: true })
+  })
+}
+
+/**
+ * JSON GET helper with bounded retries for transient failures.
+ * Only idempotent methods (GET/HEAD) are retried; mutations never are, so a
+ * flaky network cannot create duplicate posts, comments or uploads.
+ */
+export async function apiJsonWithRetry<T>(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  options: RetryOptions = {},
+): Promise<T> {
+  const method = requestMethod(init)
+  const idempotent = method === "GET" || method === "HEAD"
+  const retries = idempotent ? Math.max(0, options.retries ?? 2) : 0
+  const baseDelayMs = Math.max(0, options.baseDelayMs ?? 400)
+
+  let attempt = 0
+  for (;;) {
+    try {
+      return await apiJson<T>(input, init)
+    } catch (error) {
+      if (attempt >= retries || !isRetryableError(error)) throw error
+      await waitForRetry(baseDelayMs * 2 ** attempt, init?.signal)
+      attempt += 1
+    }
+  }
+}
+
 export function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError"
 }
