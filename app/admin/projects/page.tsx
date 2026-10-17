@@ -3,10 +3,11 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Pencil, Trash2, X, Check, ExternalLink } from "lucide-react"
+import { Pencil, Trash2, X, Check, ExternalLink, ChevronUp, ChevronDown } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
 import { PixelImage } from "@/components/pixel-image"
+import { moveProjectId, sortProjects } from "@/lib/project-order"
 
 export default function ProjectsAdminPage() {
   const { t } = useLocale()
@@ -16,7 +17,7 @@ export default function ProjectsAdminPage() {
   const [actionError, setActionError] = useState("")
   const [editId, setEditId] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
-  const [action, setAction] = useState<"save" | "delete" | "">("")
+  const [action, setAction] = useState<"save" | "delete" | "reorder" | "">("")
   const [form, setForm] = useState({ title: "", description: "", url: "", logoUrl: "", sortOrder: 0 })
 
   useEffect(() => {
@@ -52,12 +53,13 @@ export default function ProjectsAdminPage() {
         const res = await fetch("/api/projects", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editId, ...form }) })
         if (!res.ok) throw new Error("save failed")
         const updated = await res.json()
-        setProjects(p => p.map(x => x.id === editId ? updated : x))
+        setProjects(p => sortProjects(p.map(x => x.id === editId ? updated : x)))
       } else {
-        const res = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) })
+        const { sortOrder: _ignored, ...createForm } = form
+        const res = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(createForm) })
         if (!res.ok) throw new Error("save failed")
         const newP = await res.json()
-        setProjects(p => [...p, newP])
+        setProjects(p => sortProjects([...p, newP]))
       }
       resetForm()
     } catch {
@@ -83,6 +85,26 @@ export default function ProjectsAdminPage() {
     }
   }
 
+  async function move(id: string, direction: "up" | "down") {
+    if (action) return
+    const currentIds = projects.map(project => project.id)
+    const nextIds = moveProjectId(currentIds, id, direction)
+    if (nextIds.every((projectId, index) => projectId === currentIds[index])) return
+
+    setAction("reorder")
+    setActionError("")
+    try {
+      const res = await fetch("/api/projects", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: nextIds }) })
+      if (!res.ok) throw new Error("reorder failed")
+      const reordered = await res.json()
+      setProjects(Array.isArray(reordered) ? reordered : [])
+    } catch {
+      setActionError(t.reorderFailed)
+    } finally {
+      setAction("")
+    }
+  }
+
   if (loading) return <AdminLoading className="min-h-64" />
   if (loadError) return <div className="flex min-h-64 items-center justify-center font-body text-xs text-red-500" role="alert">Unable to load projects</div>
 
@@ -98,7 +120,7 @@ export default function ProjectsAdminPage() {
             <div><label className="font-mono text-xs block mb-1">{t.title}</label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
             <div><label className="font-mono text-xs block mb-1">URL</label><Input value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} /></div>
             <div><label className="font-mono text-xs block mb-1">Logo URL</label><Input value={form.logoUrl} onChange={e => setForm(f => ({ ...f, logoUrl: e.target.value }))} /></div>
-            <div><label className="font-mono text-xs block mb-1">Order</label><Input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: Number(e.target.value) }))} /></div>
+            {editId && <div><label className="font-mono text-xs block mb-1">Order</label><Input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: Number(e.target.value) }))} /></div>}
           </div>
           <div><label className="font-mono text-xs block mb-1">{t.description}</label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
           <div className="flex gap-2">
@@ -135,8 +157,10 @@ export default function ProjectsAdminPage() {
             <button onClick={() => window.open(p.url, '_blank')} title={p.url} className="font-mono text-xs text-pixel-gray-400 hover:opacity-70 hidden lg:flex items-center justify-center w-8 h-8 shrink-0"><ExternalLink className="w-3.5 h-3.5" /></button>
             <span className="font-mono text-xs text-pixel-gray-400 w-8 text-center shrink-0">{p.sortOrder}</span>
             <div className="flex gap-1 shrink-0 ml-auto">
-              <button onClick={() => startEdit(p)} className="hover:opacity-70"><Pencil className="w-3.5 h-3.5" /></button>
-              <button onClick={() => del(p.id)} className="hover:opacity-70"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+              <button onClick={() => move(p.id, "up")} disabled={index === 0} title={t.moveUp} aria-label={t.moveUp} className="hover:opacity-70 disabled:opacity-20"><ChevronUp className="w-3.5 h-3.5" /></button>
+              <button onClick={() => move(p.id, "down")} disabled={index === projects.length - 1} title={t.moveDown} aria-label={t.moveDown} className="hover:opacity-70 disabled:opacity-20"><ChevronDown className="w-3.5 h-3.5" /></button>
+              <button onClick={() => startEdit(p)} title={t.edit} aria-label={t.edit} className="hover:opacity-70"><Pencil className="w-3.5 h-3.5" /></button>
+              <button onClick={() => del(p.id)} title={t.delete} aria-label={t.delete} className="hover:opacity-70"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
             </div>
           </div>
         ))}

@@ -15,7 +15,8 @@ type T = {
   views: string; comments: string; replyTo: string; pasteImage: string
   imageLoadFailed: string; loadFailed: string
   overview: string; content: string; commentsMgmt: string; aboutPage: string
-  projectsMgmt: string; settings: string; loading: string; save: string
+  projectsMgmt: string; moveUp: string; moveDown: string; reorderFailed: string
+  settings: string; loading: string; save: string
   cancel: string; edit: string; delete: string; add: string; enable: string
   disable: string; backToBlog: string; signOut: string; adminRequired: string
   signInGithub: string; totalViews: string; totalPosts: string
@@ -48,7 +49,8 @@ const zh: T = {
   comments: "评论", replyTo: "回复", pasteImage: "可粘贴图片",
   imageLoadFailed: "图片加载失败", loadFailed: "加载失败，请稍后重试",
   overview: "总览", content: "内容管理", commentsMgmt: "评论管理",
-  aboutPage: "关于页面", projectsMgmt: "项目管理", settings: "系统设置",
+  aboutPage: "关于页面", projectsMgmt: "项目管理", moveUp: "上移", moveDown: "下移", reorderFailed: "项目排序失败",
+  settings: "系统设置",
   loading: "Loading...", save: "保存", cancel: "取消", edit: "编辑",
   delete: "删除", add: "添加", enable: "启用", disable: "禁用",
   backToBlog: "← 返回博客", signOut: "退出", adminRequired: "需要管理员权限",
@@ -88,7 +90,8 @@ const en: T = {
   comments: "comments", replyTo: "Reply to", pasteImage: "Paste image supported",
   imageLoadFailed: "Image failed to load", loadFailed: "Unable to load. Try again later.",
   overview: "Overview", content: "Content", commentsMgmt: "Comments",
-  aboutPage: "About Page", projectsMgmt: "Projects", settings: "Settings",
+  aboutPage: "About Page", projectsMgmt: "Projects", moveUp: "Move up", moveDown: "Move down", reorderFailed: "Unable to reorder projects",
+  settings: "Settings",
   loading: "Loading...", save: "Save", cancel: "Cancel", edit: "Edit",
   delete: "Delete", add: "Add", enable: "Enable", disable: "Disable",
   backToBlog: "← Back to blog", signOut: "Sign out", adminRequired: "Admin Access Required",
