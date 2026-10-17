@@ -9,6 +9,12 @@ export async function GET(req: NextRequest) {
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
   const path = req.nextUrl.searchParams.get("path")
   if (!path) return NextResponse.json({ error: "path required" }, { status: 400 })
-  const file = await getFileContent(path)
-  return NextResponse.json(file || { content: "", sha: null })
+
+  try {
+    const file = await getFileContent(path)
+    return NextResponse.json(file || { content: "", sha: null })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "GitHub read failed"
+    return NextResponse.json({ error: message, code: "github_api_error" }, { status: 502 })
+  }
 }

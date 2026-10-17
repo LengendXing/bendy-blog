@@ -71,8 +71,12 @@ export default async function BlogPostPage({ params }: PageParams) {
   const context = await getPostContext(post)
 
   let markdown = ""
-  const file = await getFileContent(post.githubPath)
-  if (file) markdown = file.content
+  try {
+    const file = await getFileContent(post.githubPath)
+    if (file) markdown = file.content
+  } catch (error) {
+    console.error(`[blog] failed to read GitHub content for ${post.githubPath}`, error)
+  }
 
   const articleJsonLd = {
     "@context": "https://schema.org",

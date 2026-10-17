@@ -1,5 +1,20 @@
 # 维护记录
 
+## REQ-202610-1008 - 2026-10-17
+
+### 变更内容
+
+- `lib/github.ts` 的读写请求统一检查 `res.ok`，失败抛出带 HTTP 状态与 GitHub 原始信息的 `GitHubApiError`。
+- `saveFileContent` / `deleteFile` 失败不再静默；`getFileContent` 仅在 404 时返回 `null`，鉴权、限流、网络错误会向上抛出。
+- 文章创建/更新/删除与批量导入在 GitHub 写入失败时返回 502，且不会继续写数据库；数据库写入失败时回滚已写入的仓库文件（新建则删除，更新则恢复旧内容）。
+- 管理端删除、导入与保存失败均展示服务端错误信息。
+- 新增 `lib/reconcile.ts` 与 `scripts/reconcile-content.ts`，支持 `npm run content:reconcile` 对账 DB 与 GitHub 内容仓库。
+
+### 验证情况
+
+- `npx tsc --noEmit`、`npm run test`、`NODE_ENV=production npm run build` 通过。
+- `lib/github.test.ts` 覆盖成功、401/403/404/422、网络错误与配置缺失；`lib/reconcile.test.ts` 覆盖缺失文件、孤儿文件、重复路径与非法路径。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容

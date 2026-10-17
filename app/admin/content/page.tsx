@@ -30,6 +30,7 @@ export default function ContentPage() {
   const [createError, setCreateError] = useState("")
   const [showImport, setShowImport] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [actionError, setActionError] = useState("")
   const [deletingPost, setDeletingPost] = useState(false)
   const [columnAction, setColumnAction] = useState(false)
   const [importResults, setImportResults] = useState<any[] | null>(null)
@@ -150,9 +151,17 @@ export default function ContentPage() {
   async function deletePost(id: string) {
     if (!confirm("Delete?")) return
     setDeletingPost(true)
+    setActionError("")
     try {
-      await fetch("/api/blog", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+      const res = await fetch("/api/blog", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}))
+        setActionError(payload.error || t.deleteFailed)
+        return
+      }
       setAllPosts(p => p.filter(x => x.id !== id))
+    } catch {
+      setActionError(t.deleteFailed)
     } finally {
       setDeletingPost(false)
     }
@@ -161,19 +170,27 @@ export default function ContentPage() {
   async function handleImport() {
     const files = fileInputRef.current?.files
     if (!files || files.length === 0) return
-    setImporting(true); setImportResults(null)
+    setImporting(true); setImportResults(null); setActionError("")
     const formData = new FormData()
     for (const file of Array.from(files)) formData.append("files", file)
     try {
       const res = await fetch("/api/import", { method: "POST", body: formData })
-      const data = await res.json(); setImportResults(data.results || [])
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setImportResults([{ filename: "request", status: "error", error: data.error || t.importFailed }])
+        return
+      }
+      setImportResults(data.results || [])
       const refreshedPosts = await (await fetch("/api/blog")).json()
       const refreshedColumns = await (await fetch("/api/columns")).json()
       if (Array.isArray(refreshedPosts)) setAllPosts(refreshedPosts)
       if (Array.isArray(refreshedColumns)) setColumns(refreshedColumns)
-    } catch { setImportResults([{ filename: "error", status: "error", error: "Import failed" }]) }
-    setImporting(false)
-    if (fileInputRef.current) fileInputRef.current.value = ""
+    } catch {
+      setImportResults([{ filename: "request", status: "error", error: t.importFailed }])
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
   }
 
   if (loading) return <AdminLoading className="min-h-64" />
@@ -188,6 +205,10 @@ export default function ContentPage() {
           <Button size="sm" onClick={() => { setShowNew(true); setCreateError("") }}><Plus className="w-3 h-3 mr-2" />{t.newPost}</Button>
         </div>
       </div>
+
+      {actionError && (
+        <p className="mb-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{actionError}</p>
+      )}
 
       <div className="flex items-center gap-0 mb-4 max-w-sm">
         <input value={search} onChange={e => setSearch(e.target.value)}

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { saveFileContent } from "@/lib/github"
+import { saveFileContent, deleteFile, type GitHubWriteResult } from "@/lib/github"
 
 interface ParsedArticle {
   title: string
@@ -105,25 +105,44 @@ export async function POST(req: NextRequest) {
         columnId = col.id
       }
 
-      // Upload to GitHub
+      // Upload to GitHub first; a failure here must prevent the DB record.
       const githubPath = `posts/${parsed.slug}.md`
-      await saveFileContent(githubPath, parsed.body || `# ${parsed.title}\n`, undefined, `Import: ${parsed.title}`)
+      let written: GitHubWriteResult
+      try {
+        written = await saveFileContent(githubPath, parsed.body || `# ${parsed.title}\n`, undefined, `Import: ${parsed.title}`)
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "GitHub write failed"
+        results.push({ filename, status: "error", title: parsed.title, error: detail })
+        continue
+      }
 
-      // Create DB record
+      // Create DB record; if it fails, remove the just-written repository file.
       const isPublished = parsed.status.toLowerCase() === "published"
       const publishDate = parseDate(parsed.date || "")
 
-      await prisma.blogPost.create({
-        data: {
-          slug: parsed.slug,
-          title: parsed.title,
-          description: parsed.summary || null,
-          githubPath,
-          published: isPublished,
-          columnId,
-          publishDate,
-        },
-      })
+      try {
+        await prisma.blogPost.create({
+          data: {
+            slug: parsed.slug,
+            title: parsed.title,
+            description: parsed.summary || null,
+            githubPath,
+            published: isPublished,
+            columnId,
+            publishDate,
+          },
+        })
+      } catch (error) {
+        const sha = written?.content?.sha
+        if (sha) {
+          try {
+            await deleteFile(githubPath, sha)
+          } catch (rollbackError) {
+            console.error(`[import] failed to remove orphaned GitHub file ${githubPath}`, rollbackError)
+          }
+        }
+        throw error
+      }
 
       results.push({ filename, status: "imported", title: parsed.title })
     } catch (e: any) {

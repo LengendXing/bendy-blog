@@ -146,6 +146,19 @@ Both Dufs and GitHub image settings can be configured via:
 - `.env.local` / Vercel env vars (loaded at startup)
 - Admin → Settings → Site Settings (runtime override)
 
+## Content Reconciliation
+
+Blog metadata lives in PostgreSQL while post bodies live in the GitHub content repository. A GitHub write failure now returns HTTP 502 to the caller instead of silently updating only the database; if the database write fails after GitHub succeeds, the repository file is rolled back (created files are deleted, updated files are restored).
+
+Run the reconciliation script to detect drift between the two stores:
+
+```bash
+npm run content:reconcile          # human-readable report
+npm run content:reconcile -- --json
+```
+
+It reports posts whose `githubPath` is missing from the repository, repository files without a database record, duplicate `githubPath` values, and invalid paths. Exit code `0` means clean, `1` means drift was found, and `2` means the check itself failed.
+
 ## i18n
 
 Supports: 中文, ᠮᠣᠩᠭᠣᠯ, ئۇيغۇرچە, English, العربية, Русский, 日本語, 한국어

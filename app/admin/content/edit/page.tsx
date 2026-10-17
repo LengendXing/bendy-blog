@@ -114,10 +114,11 @@ function EditContent() {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, title, description, content: markdown, published, columnId, publishDate: publishDate || null }),
       })
-      if (!res.ok) throw new Error("save failed")
-    } catch {
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(payload.error || t.saveFailed)
+    } catch (error) {
       setSaving(false)
-      setSaveError(t.saveFailed)
+      setSaveError(error instanceof Error ? error.message : t.saveFailed)
       return
     }
     setSaving(false)
