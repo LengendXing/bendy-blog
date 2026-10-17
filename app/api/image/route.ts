@@ -1,6 +1,10 @@
 export const dynamic = "force-dynamic"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { isSafeImageContentType, normalizeContentType } from "@/lib/upload-policy"
+
+const IMAGE_PROXY_TIMEOUT_MS = 15_000
+const MAX_PROXY_BYTES = 10 * 1024 * 1024
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url")
@@ -34,18 +38,37 @@ export async function GET(req: NextRequest) {
     headers["Authorization"] = "Basic " + Buffer.from(`${user}:${pass}`).toString("base64")
   }
 
-  const res = await fetch(target, { headers, redirect: "manual", cache: "no-store" })
+  let res: Response
+  try {
+    res = await fetch(target, {
+      headers,
+      redirect: "manual",
+      cache: "no-store",
+      signal: AbortSignal.timeout(IMAGE_PROXY_TIMEOUT_MS),
+    })
+  } catch (e) {
+    console.error("Image proxy fetch failed:", e)
+    return new NextResponse("Upstream unavailable", { status: 502 })
+  }
   if (res.status >= 300 && res.status < 400) return new NextResponse("Upstream redirect refused", { status: 502 })
   if (!res.ok) return new NextResponse("Not found", { status: 404 })
 
-  const contentType = res.headers.get("Content-Type") || ""
-  if (!contentType.toLowerCase().startsWith("image/")) return new NextResponse("Not an image", { status: 415 })
+  const contentLength = Number(res.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_PROXY_BYTES) {
+    return new NextResponse("Image too large", { status: 413 })
+  }
+
+  const contentType = normalizeContentType(res.headers.get("Content-Type"))
+  // Never proxy SVG/HTML through the site origin: an SVG served with
+  // image/svg+xml can execute script when opened directly.
+  if (!isSafeImageContentType(contentType)) return new NextResponse("Not a safe image type", { status: 415 })
 
   return new NextResponse(res.body, {
     headers: {
       "Content-Type": contentType,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
     },
   })
 }
