@@ -13,9 +13,20 @@ import { PixelImage, PixelMarkdownImage } from "@/components/pixel-image"
 
 interface CommentData {
   id: string; content: string; imageUrl?: string | null; parentId?: string | null; replyToId?: string | null
-  createdAt: string; updatedAt?: string
+  createdAt: string
   user: { name: string | null; image: string | null; githubUsername: string | null }
 }
+
+interface CommentPage {
+  items: CommentData[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  hasMore: boolean
+}
+
+const COMMENTS_PAGE_SIZE = 20
 
 interface Props {
   post: { id: string; slug: string; title: string; views: number; shares: number; publishDate: string | null; updatedAt: string }
@@ -234,18 +245,28 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
   const { t } = useLocale()
   const [comments, setComments] = useState(initialComments)
   const [commentsLoading, setCommentsLoading] = useState(true)
+  const [commentsLoadingMore, setCommentsLoadingMore] = useState(false)
   const [commentsError, setCommentsError] = useState(false)
+  const [commentsLoadMoreError, setCommentsLoadMoreError] = useState(false)
+  const [commentsTotal, setCommentsTotal] = useState(0)
+  const [commentsPage, setCommentsPage] = useState(1)
+  const [commentsHasMore, setCommentsHasMore] = useState(false)
   const [views, setViews] = useState(post.views)
 
   useEffect(() => {
     const controller = new AbortController()
     setCommentsLoading(true)
     setCommentsError(false)
-    fetch(`/api/comments?postId=${encodeURIComponent(post.id)}`, { signal: controller.signal })
+    fetch(`/api/comments?postId=${encodeURIComponent(post.id)}&page=1&pageSize=${COMMENTS_PAGE_SIZE}`, { signal: controller.signal })
       .then(async response => {
-        const data = await response.json().catch(() => null)
-        if (!response.ok || !Array.isArray(data)) throw new Error("comments request failed")
-        if (!controller.signal.aborted) setComments(data as CommentData[])
+        const data = await response.json().catch(() => null) as CommentPage | null
+        if (!response.ok || !data || !Array.isArray(data.items)) throw new Error("comments request failed")
+        if (!controller.signal.aborted) {
+          setComments(data.items)
+          setCommentsTotal(data.total)
+          setCommentsPage(data.page)
+          setCommentsHasMore(data.hasMore)
+        }
       })
       .catch(error => {
         if (error?.name !== "AbortError") {
@@ -258,6 +279,32 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
       })
     return () => controller.abort()
   }, [post.id])
+
+  function appendComment(comment: CommentData) {
+    setComments(prev => [...prev, comment])
+    setCommentsTotal(total => total + 1)
+  }
+
+  async function loadMoreComments() {
+    if (commentsLoadingMore || !commentsHasMore) return
+    setCommentsLoadingMore(true)
+    setCommentsLoadMoreError(false)
+    try {
+      const nextPage = commentsPage + 1
+      const response = await fetch(`/api/comments?postId=${encodeURIComponent(post.id)}&page=${nextPage}&pageSize=${COMMENTS_PAGE_SIZE}`)
+      const data = await response.json().catch(() => null) as CommentPage | null
+      if (!response.ok || !data || !Array.isArray(data.items)) throw new Error("comments request failed")
+      setComments(prev => [...prev, ...data.items])
+      setCommentsTotal(data.total)
+      setCommentsPage(data.page)
+      setCommentsHasMore(data.hasMore)
+    } catch (error) {
+      console.error("Failed to load more comments:", error)
+      setCommentsLoadMoreError(true)
+    } finally {
+      setCommentsLoadingMore(false)
+    }
+  }
 
   useEffect(() => {
     fetch("/api/stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: post.slug, event: "view" }) })
@@ -281,7 +328,7 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
         <div className="flex items-center gap-3 sm:gap-4 text-xs font-mono text-pixel-gray-500 mb-2 flex-wrap">
           <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {views}</span>
           <button onClick={handleShare} className="flex items-center gap-1 hover:text-pixel-black dark:hover:text-pixel-white"><Share2 className="w-3 h-3" /> {t.share}</button>
-          <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {comments.length}</span>
+          <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {commentsTotal}</span>
         </div>
         <div className="flex items-center gap-4 text-[10px] font-mono text-pixel-gray-400 mb-6 sm:mb-8 flex-wrap">
           {pubDate && (
@@ -333,7 +380,7 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
       <aside className="lg:w-72 xl:w-80 shrink-0 border-t-2 lg:border-t-0 lg:border-l-2 border-pixel-black dark:border-pixel-white lg:pl-6 xl:lg:pl-8 pt-6 lg:pt-0 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain">
         <h2 className="font-mono text-xs uppercase tracking-widest mb-4 sm:mb-6">// {t.comments}</h2>
         {session ? (
-          <CommentBox postId={post.id} onPosted={c => setComments(prev => [...prev, c])} />
+          <CommentBox postId={post.id} onPosted={appendComment} />
         ) : (
           <Button size="sm" variant="outline" onClick={() => signIn("github")} className="mb-4 sm:mb-6 text-xs">{t.signInToComment}</Button>
         )}
@@ -344,8 +391,16 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
             <p key="comments-error" className="pixel-content-transition font-body text-xs text-red-500" role="alert">{t.loadFailed}</p>
           ) : (
             <div key="comments-content" className="pixel-content-transition">
-              {topLevel.map(c => <CommentItem key={c.id} comment={c} allComments={comments} postId={post.id} onNewReply={c => setComments(prev => [...prev, c])} />)}
-              {comments.length === 0 && <p className="font-body text-xs text-pixel-gray-400">{t.noComments}</p>}
+              {topLevel.map(c => <CommentItem key={c.id} comment={c} allComments={comments} postId={post.id} onNewReply={appendComment} />)}
+              {commentsTotal === 0 && <p className="font-body text-xs text-pixel-gray-400">{t.noComments}</p>}
+              {commentsLoadMoreError && <p className="mt-2 font-body text-xs text-red-500" role="alert">{t.loadFailed}</p>}
+              {commentsHasMore && (
+                <div className="mt-3">
+                  <Button size="sm" variant="outline" onClick={loadMoreComments} disabled={commentsLoadingMore}>
+                    {commentsLoadingMore ? t.loading : t.loadMoreComments}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

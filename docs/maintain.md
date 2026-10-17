@@ -1,5 +1,21 @@
 # 维护记录
 
+## 2026-10-17 - 评论列表分页与字段收敛（REQ-202610-1020）
+
+### 变更内容
+
+- `GET /api/comments` 改为分页响应：默认 `page=1`、`pageSize=20`，`pageSize` 上限 100；匿名请求必须提供 `postId`，管理员可不带 `postId` 跨文章分页读取。
+- 公开响应改为字段白名单：仅返回 `id`、`content`、`imageUrl`、`parentId`、`replyToId`、`createdAt` 与评论者的 `name`、`image`、`githubUsername`，不再返回文章标题、`postId`、`updatedAt` 等内部字段。
+- 文章详情评论区与后台评论管理页接入分页响应，支持“加载更多评论”。
+
+### 影响范围
+
+- 评论读取接口、文章详情评论区、后台评论管理页。
+
+### 验证情况
+
+- `npm test` 16/16 通过；`npx tsc --noEmit` 0 error；`NODE_ENV=production npm run build` 成功。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容

@@ -8,11 +8,28 @@ import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
 import { PixelImage } from "@/components/pixel-image"
 
-const PAGE_SIZE = 15
+const GROUP_PAGE_SIZE = 15
+const COMMENTS_PAGE_SIZE = 100
 
 type CommentGroup = {
   title: string
   comments: any[]
+}
+
+type CommentPage = {
+  items: any[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  hasMore: boolean
+}
+
+async function fetchCommentPage(page: number): Promise<CommentPage> {
+  const response = await fetch(`/api/comments?page=${page}&pageSize=${COMMENTS_PAGE_SIZE}`)
+  const data = await response.json().catch(() => null) as CommentPage | null
+  if (!response.ok || !data || !Array.isArray(data.items)) throw new Error("comments request failed")
+  return data
 }
 
 function commentAuthor(comment: any) {
@@ -35,27 +52,47 @@ export default function CommentsPage() {
   const [filter, setFilter] = useState("")
   const [drawerSlug, setDrawerSlug] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [commentsPage, setCommentsPage] = useState(1)
+  const [hasMoreComments, setHasMoreComments] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [commentError, setCommentError] = useState("")
   const [commentAction, setCommentAction] = useState("")
 
   useEffect(() => {
-    fetch("/api/comments")
-      .then(async response => {
-        const data = await response.json().catch(() => null)
-        if (!response.ok || !Array.isArray(data)) {
-          setComments([])
-          setCommentError("Unable to load comments")
-        } else {
-          setComments(data)
-        }
-        setLoading(false)
+    let cancelled = false
+    fetchCommentPage(1)
+      .then(data => {
+        if (cancelled) return
+        setComments(data.items)
+        setCommentsPage(data.page)
+        setHasMoreComments(data.hasMore)
       })
       .catch(() => {
+        if (cancelled) return
         setComments([])
         setCommentError("Unable to load comments")
-        setLoading(false)
       })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [])
+
+  async function loadMoreComments() {
+    if (loadingMore || !hasMoreComments) return
+    setLoadingMore(true)
+    setCommentError("")
+    try {
+      const data = await fetchCommentPage(commentsPage + 1)
+      setComments(current => [...current, ...data.items])
+      setCommentsPage(data.page)
+      setHasMoreComments(data.hasMore)
+    } catch {
+      setCommentError("Unable to load comments")
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   useEffect(() => {
     if (!drawerSlug) return
@@ -81,8 +118,8 @@ export default function CommentsPage() {
   }, {})
 
   const allEntries = Object.entries(grouped).filter(([, group]) => !filter || group.title.toLowerCase().includes(filter.toLowerCase()))
-  const totalPages = Math.max(1, Math.ceil(allEntries.length / PAGE_SIZE))
-  const entries = allEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(allEntries.length / GROUP_PAGE_SIZE))
+  const entries = allEntries.slice((page - 1) * GROUP_PAGE_SIZE, page * GROUP_PAGE_SIZE)
   const selectedGroup = drawerSlug ? grouped[drawerSlug] : null
 
   const commentById = new Map<string, any>()
@@ -265,6 +302,8 @@ export default function CommentsPage() {
         </button>
       </div>
 
+      {commentError && !drawerSlug && <p className="mb-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{commentError}</p>}
+
       <div className="border-t-2 border-pixel-black dark:border-pixel-white">
         {entries.map(([slug, group]) => {
           const latest = group.comments[group.comments.length - 1]
@@ -301,6 +340,14 @@ export default function CommentsPage() {
             className="border-2 border-pixel-black dark:border-pixel-white w-8 h-8 flex items-center justify-center disabled:opacity-30 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
             <ChevronRight className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {hasMoreComments && (
+        <div className="mt-6 flex justify-center">
+          <Button size="sm" variant="outline" onClick={loadMoreComments} disabled={loadingMore}>
+            {loadingMore ? t.loading : t.loadMoreComments}
+          </Button>
         </div>
       )}
 

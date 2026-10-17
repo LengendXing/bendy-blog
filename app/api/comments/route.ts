@@ -1,27 +1,43 @@
 export const dynamic = "force-dynamic"
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
+import type { Prisma } from "@prisma/client"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendNotifications } from "@/lib/notify"
 import { isRateLimited } from "@/lib/rate-limit"
+import {
+  ADMIN_COMMENT_SELECT,
+  PUBLIC_COMMENT_SELECT,
+  buildCommentWhere,
+  commentPaginationMeta,
+  parseCommentsPagination,
+  resolveCommentsAccess,
+} from "@/lib/comments-query"
 
 export async function GET(req: NextRequest) {
-  const postId = req.nextUrl.searchParams.get("postId")
   const session = await getServerSession(authOptions)
   const isAdmin = Boolean((session?.user as any)?.isAdmin)
-  const comments = await prisma.comment.findMany({
-    where: {
-      ...(postId ? { postId } : {}),
-      ...(!isAdmin ? { post: { published: true } } : {}),
-    },
-    include: {
-      user: { select: { name: true, image: true, githubUsername: true } },
-      post: { select: { title: true, slug: true } },
-    },
-    orderBy: { createdAt: "asc" },
+  const access = resolveCommentsAccess(req.nextUrl.searchParams.get("postId"), isAdmin)
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+
+  const { page, pageSize } = parseCommentsPagination(req.nextUrl.searchParams)
+  const where: Prisma.CommentWhereInput = buildCommentWhere(access.postId, isAdmin)
+  const select: Prisma.CommentSelect = isAdmin ? ADMIN_COMMENT_SELECT : PUBLIC_COMMENT_SELECT
+  const [total, comments] = await prisma.$transaction([
+    prisma.comment.count({ where }),
+    prisma.comment.findMany({
+      where,
+      select,
+      orderBy: { createdAt: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ])
+  return NextResponse.json({
+    items: comments,
+    ...commentPaginationMeta(total, page, pageSize),
   })
-  return NextResponse.json(comments)
 }
 
 export async function POST(req: NextRequest) {
