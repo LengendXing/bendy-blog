@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Trash2, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, MessageSquare, ArrowRight } from "lucide-react"
+import { Trash2, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, MessageSquare, ArrowRight, Download } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
 import { PixelImage } from "@/components/pixel-image"
@@ -57,6 +57,9 @@ export default function CommentsPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [commentError, setCommentError] = useState("")
   const [commentAction, setCommentAction] = useState("")
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState("")
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -121,6 +124,8 @@ export default function CommentsPage() {
   const totalPages = Math.max(1, Math.ceil(allEntries.length / GROUP_PAGE_SIZE))
   const entries = allEntries.slice((page - 1) * GROUP_PAGE_SIZE, page * GROUP_PAGE_SIZE)
   const selectedGroup = drawerSlug ? grouped[drawerSlug] : null
+  const groupIds = selectedGroup?.comments.map(comment => comment.id) || []
+  const allGroupSelected = groupIds.length > 0 && groupIds.every(id => selectedIds.has(id))
 
   const commentById = new Map<string, any>()
   const childrenByTarget = new Map<string, any[]>()
@@ -158,6 +163,7 @@ export default function CommentsPage() {
     setDrawerSlug(null)
     setEditId(null)
     setCommentError("")
+    setSelectedIds(new Set())
   }
 
   async function deleteComment(id: string) {
@@ -181,6 +187,11 @@ export default function CommentsPage() {
           }
         }
         return current.filter(comment => !removed.has(comment.id))
+      })
+      setSelectedIds(current => {
+        const next = new Set(current)
+        next.delete(id)
+        return next
       })
       if (editId === id) {
         setEditId(null)
@@ -210,6 +221,95 @@ export default function CommentsPage() {
     }
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds(current => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectGroup() {
+    if (!selectedGroup) return
+    const ids = selectedGroup.comments.map(comment => comment.id)
+    const shouldClear = ids.length > 0 && ids.every(id => selectedIds.has(id))
+    setSelectedIds(current => {
+      const next = new Set(current)
+      for (const id of ids) {
+        if (shouldClear) next.delete(id)
+        else next.add(id)
+      }
+      return next
+    })
+  }
+
+  async function deleteSelected() {
+    if (selectedIds.size === 0 || bulkAction) return
+    if (!confirm(t.confirmBulkDelete.replace("{{count}}", String(selectedIds.size)))) return
+    setBulkAction("delete")
+    setCommentError("")
+    try {
+      const res = await fetch("/api/comments", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      })
+      if (!res.ok) {
+        setCommentError(t.bulkDeleteFailed)
+        return
+      }
+      const idsToRemove = Array.from(selectedIds)
+      setComments(current => {
+        const removed = new Set(idsToRemove)
+        let changed = true
+        while (changed) {
+          changed = false
+          for (const comment of current) {
+            if (comment.parentId && removed.has(comment.parentId) && !removed.has(comment.id)) {
+              removed.add(comment.id)
+              changed = true
+            }
+          }
+        }
+        return current.filter(comment => !removed.has(comment.id))
+      })
+      setSelectedIds(new Set())
+    } catch {
+      setCommentError(t.bulkDeleteFailed)
+    } finally {
+      setBulkAction("")
+    }
+  }
+
+  async function exportComments(postId?: string) {
+    if (exporting) return
+    setExporting(true)
+    setCommentError("")
+    try {
+      const url = postId
+        ? `/api/comments/export?postId=${encodeURIComponent(postId)}`
+        : "/api/comments/export"
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("export failed")
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const disposition = response.headers.get("content-disposition") || ""
+      const filename = /filename="([^"]+)"/.exec(disposition)?.[1] || "comments.csv"
+      link.href = objectUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch {
+      setCommentError(t.exportFailed)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   function renderCommentTree(comment: any, depth = 0, trail = new Set<string>()): ReactNode {
     // Keep malformed or cyclic data from preventing the rest of the drawer from rendering.
     if (trail.has(comment.id)) return null
@@ -232,6 +332,13 @@ export default function CommentsPage() {
             </div>
           )}
           <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={selectedIds.has(comment.id)}
+              onChange={() => toggleSelected(comment.id)}
+              aria-label={`${t.selectComment}: ${commentAuthor(comment)}`}
+              className="mt-1 h-3.5 w-3.5 shrink-0 accent-pixel-black dark:accent-pixel-white"
+            />
             {comment.user?.image && (
               <PixelImage
                 src={comment.user.image}
@@ -291,15 +398,21 @@ export default function CommentsPage() {
     <div>
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.commentsMgmt}</h1>
 
-      <div className="flex items-center gap-0 mb-4 max-w-sm">
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && doSearch()}
-          placeholder={`${t.title}...`}
-          className="flex-1 h-10 border-2 border-r-0 border-pixel-black dark:border-pixel-white bg-transparent px-3 text-sm font-body focus:outline-none" />
-        <button onClick={doSearch}
-          className="h-10 px-4 border-2 border-pixel-black dark:border-pixel-white bg-pixel-black dark:bg-pixel-white text-pixel-white dark:text-pixel-black font-mono text-xs hover:opacity-80 shrink-0">
-          Go !
-        </button>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex flex-1 items-center gap-0 max-w-sm min-w-[220px]">
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && doSearch()}
+            placeholder={`${t.title}...`}
+            className="flex-1 h-10 border-2 border-r-0 border-pixel-black dark:border-pixel-white bg-transparent px-3 text-sm font-body focus:outline-none" />
+          <button onClick={doSearch}
+            className="h-10 px-4 border-2 border-pixel-black dark:border-pixel-white bg-pixel-black dark:bg-pixel-white text-pixel-white dark:text-pixel-black font-mono text-xs hover:opacity-80 shrink-0">
+            Go !
+          </button>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => exportComments()} disabled={exporting}>
+          <Download className="mr-1 h-3 w-3" aria-hidden="true" />
+          {exporting ? t.loading : t.exportAllComments}
+        </Button>
       </div>
 
       {commentError && !drawerSlug && <p className="mb-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{commentError}</p>}
@@ -354,8 +467,8 @@ export default function CommentsPage() {
       {selectedGroup && (
         <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-labelledby="comments-drawer-title">
           <button className="absolute inset-0 bg-pixel-black/60" onClick={closeDrawer} aria-label={t.cancel} />
-          <aside className="pixel-drawer-in absolute right-0 top-0 bottom-0 flex w-full max-w-xl flex-col overflow-hidden border-l-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black text-pixel-black dark:text-pixel-white shadow-[-8px_0_0_#0a0a0a] dark:shadow-[-8px_0_0_#fafafa]" aria-busy={Boolean(commentAction)}>
-            {commentAction && (
+          <aside className="pixel-drawer-in absolute right-0 top-0 bottom-0 flex w-full max-w-xl flex-col overflow-hidden border-l-2 border-pixel-black dark:border-pixel-white bg-pixel-white dark:bg-pixel-black text-pixel-black dark:text-pixel-white shadow-[-8px_0_0_#0a0a0a] dark:shadow-[-8px_0_0_#fafafa]" aria-busy={Boolean(commentAction || bulkAction)}>
+            {(commentAction || bulkAction) && (
               <AdminLoading
                 size="md"
                 className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 backdrop-blur-[1px] dark:bg-pixel-black/95"
@@ -366,6 +479,26 @@ export default function CommentsPage() {
                 <p className="font-mono text-[10px] uppercase tracking-widest text-pixel-gray-500">// {t.comments}</p>
                 <h2 id="comments-drawer-title" className="mt-2 truncate font-mono text-xs uppercase tracking-wider">{selectedGroup.title}</h2>
                 <p className="mt-1 font-body text-xs text-pixel-gray-500">{selectedGroup.comments.length} {t.comments}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 font-mono text-[10px] uppercase tracking-wider">
+                    <input
+                      type="checkbox"
+                      checked={allGroupSelected}
+                      onChange={toggleSelectGroup}
+                      className="h-3.5 w-3.5 accent-pixel-black dark:accent-pixel-white"
+                    />
+                    {t.selectAll}
+                  </label>
+                  <span className="font-mono text-[10px] text-pixel-gray-500">{t.selected}: {selectedIds.size}</span>
+                  <Button size="sm" variant="destructive" onClick={deleteSelected} disabled={selectedIds.size === 0 || Boolean(bulkAction)}>
+                    <Trash2 className="mr-1 h-3 w-3" aria-hidden="true" />
+                    {t.bulkDelete}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => exportComments(selectedGroup.comments[0]?.postId)} disabled={exporting}>
+                    <Download className="mr-1 h-3 w-3" aria-hidden="true" />
+                    {t.exportComments}
+                  </Button>
+                </div>
               </div>
               <button onClick={closeDrawer} title={t.cancel} aria-label={t.cancel} className="p-1 hover:bg-pixel-gray-100 dark:hover:bg-pixel-gray-900">
                 <X className="h-4 w-4" />

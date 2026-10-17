@@ -6,7 +6,8 @@ export async function isRateLimited(key: string, limit: number, windowSeconds: n
     const count = await redis.incr(key)
     if (count === 1) await redis.expire(key, windowSeconds)
     return count > limit
-  } catch {
+  } catch (error) {
+    console.error("Rate limiter unavailable, allowing request:", error)
     return false
   }
 }

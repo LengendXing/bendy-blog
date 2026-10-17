@@ -128,7 +128,7 @@ function CommentBox({ postId, parentId, replyToId, replyToName, onPosted, onCanc
   }, [])
 
   async function submit() {
-    if (!content.trim() && !imageUrl) return
+    if (!content.trim()) return
     setSubmitting(true)
     setError(false)
     try {
@@ -157,7 +157,7 @@ function CommentBox({ postId, parentId, replyToId, replyToName, onPosted, onCanc
           {onCancel && <button onClick={onCancel}><X className="w-3 h-3" /></button>}
         </div>
       )}
-      <textarea value={content} maxLength={4000} onChange={e => setContent(e.target.value)} onPaste={handlePaste}
+      <textarea value={content} maxLength={2000} onChange={e => setContent(e.target.value)} onPaste={handlePaste}
         placeholder={t.writeComment}
         className="w-full border-2 border-pixel-black dark:border-pixel-white bg-transparent px-3 py-2 text-xs font-body focus:outline-none resize-y min-h-[60px]" rows={2} />
       {error && <p className="mt-1 font-body text-[10px] text-red-500" role="alert">{t.loadFailed}</p>}
@@ -177,7 +177,7 @@ function CommentBox({ postId, parentId, replyToId, replyToName, onPosted, onCanc
         </div>
       )}
       <div className="flex items-center gap-2 mt-1 flex-wrap">
-        <Button size="sm" onClick={submit} disabled={submitting || uploading || (!content.trim() && !imageUrl)}>
+        <Button size="sm" onClick={submit} disabled={submitting || uploading || !content.trim()}>
           {submitting ? "..." : t.post}
         </Button>
         <span className="text-[10px] text-pixel-gray-400 flex items-center gap-1"><ImageIcon className="w-3 h-3" />{t.pasteImage}</span>

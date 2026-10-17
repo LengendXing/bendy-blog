@@ -38,6 +38,8 @@ type T = {
   adminAdded: string; adminRemoved: string; adminUpdated: string; adminUpdateFailed: string
   lastAdminCannotBeRemoved: string; replaceAdmin: string; removeAdminConfirm: string; currentUser: string
   soleAdminCannotBeReplaced: string; adminConfigConflict: string
+  selectAll: string; selected: string; selectComment: string; bulkDelete: string; confirmBulkDelete: string
+  exportComments: string; exportAllComments: string; exportFailed: string; bulkDeleteFailed: string
 }
 
 const zh: T = {
@@ -78,6 +80,15 @@ const zh: T = {
   replaceAdmin: "替换管理员", removeAdminConfirm: "确定移除管理员 @{{username}} 吗？", currentUser: "当前账户",
   soleAdminCannotBeReplaced: "请先添加另一名管理员，再替换当前唯一管理员",
   adminConfigConflict: "管理员配置刚刚被其他操作更新，请重试",
+  selectAll: "全选",
+  selected: "已选",
+  selectComment: "选择评论",
+  bulkDelete: "批量删除",
+  confirmBulkDelete: "确定删除选中的 {{count}} 条评论吗？",
+  exportComments: "导出评论",
+  exportAllComments: "导出全部",
+  exportFailed: "导出失败，请稍后重试",
+  bulkDeleteFailed: "批量删除失败，请稍后重试",
 }
 
 const en: T = {
@@ -118,6 +129,15 @@ const en: T = {
   replaceAdmin: "Replace", removeAdminConfirm: "Remove administrator @{{username}}?", currentUser: "current account",
   soleAdminCannotBeReplaced: "Add another administrator before replacing the only administrator",
   adminConfigConflict: "The administrator list changed. Please try again.",
+  selectAll: "Select all",
+  selected: "Selected",
+  selectComment: "Select comment",
+  bulkDelete: "Delete selected",
+  confirmBulkDelete: "Delete the {{count}} selected comments?",
+  exportComments: "Export comments",
+  exportAllComments: "Export all",
+  exportFailed: "Export failed. Please try again.",
+  bulkDeleteFailed: "Bulk delete failed. Please try again.",
 }
 
 const mn: T = { ...en,
