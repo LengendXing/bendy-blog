@@ -5,7 +5,6 @@ import { sortPostsByEffectiveDate } from "@/lib/post-order"
 const siteUrl = "https://blog.sunchengxin.com"
 
 export const revalidate = 3600
-export const dynamic = "force-dynamic"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let posts: Array<{ slug: string; updatedAt: Date; publishDate: Date | null; createdAt: Date }> = []

@@ -1,5 +1,21 @@
 # 维护记录
 
+## 2026-10-17 - REQ-202610-1017 sitemap 缓存配置
+
+### 变更内容
+
+- 移除 `app/sitemap.ts` 中与 `revalidate = 3600` 冲突的 `dynamic = "force-dynamic"`，恢复 sitemap 的每小时增量缓存，避免每次请求都查询数据库重新生成。
+- 新增 `lib/sitemap-config.test.ts`，防止两段缓存配置再次同时出现。
+
+### 影响范围
+
+- `/sitemap.xml` 由每次请求动态生成改为构建时生成并按小时重新验证。
+- 不改变 sitemap 的 URL 结构、字段与数据库查询逻辑。
+
+### 验证情况
+
+- `npm test`、`npx tsc --noEmit`、`NODE_ENV=production npm run build` 通过，构建产物中 `/sitemap.xml` 为静态路由。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容
