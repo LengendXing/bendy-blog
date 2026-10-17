@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { resolveTimelineRange } from "@/lib/timeline"
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const dateParam = req.nextUrl.searchParams.get("date")
-  const date = dateParam ? new Date(dateParam) : new Date()
-  const start = new Date(date); start.setHours(0, 0, 0, 0)
-  const end = new Date(date); end.setHours(23, 59, 59, 999)
+  const range = resolveTimelineRange(req.nextUrl.searchParams.get("date"))
+  if (!range) return NextResponse.json({ error: "invalid_date" }, { status: 400 })
+  const { start, end } = range
 
   const comments = await prisma.comment.findMany({
     where: { createdAt: { gte: start, lte: end } },

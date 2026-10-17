@@ -4,6 +4,7 @@ import { Card, CardTitle, CardContent } from "@/components/ui/card"
 import { Eye, Share2, MessageSquare, FileText, TrendingUp, Clock } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
+import { toTimelineDateParam } from "@/lib/timeline"
 
 function PixelCalendar({ selectedDate, onSelect }: { selectedDate: Date; onSelect: (d: Date) => void }) {
   const [viewMonth, setViewMonth] = useState(new Date(selectedDate))
@@ -65,7 +66,7 @@ function Timeline({ date }: { date: Date }) {
     const controller = new AbortController()
     setLoading(true)
     setLoadError(false)
-    fetch(`/api/timeline?date=${date.toISOString()}`, { signal: controller.signal })
+    fetch(`/api/timeline?date=${encodeURIComponent(toTimelineDateParam(date))}`, { signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error("timeline load failed")
         const data = await response.json()
