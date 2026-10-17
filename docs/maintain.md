@@ -1,5 +1,23 @@
 # 维护记录
 
+## 2026-10-17 — schema.prisma 去重
+
+### 变更内容
+
+- 删除根目录历史遗留的 `schema.prisma`，仅保留 Prisma CLI 实际读取的 `prisma/schema.prisma`。
+- 新增 `lib/schema-location.test.ts`，断言根副本不存在且 `prisma/schema.prisma` 保留栏目名约束注释，防止重复文件再次出现。
+
+### 影响范围
+
+- Prisma CLI、`prisma generate` 与 `prisma db push` 均默认读取 `prisma/schema.prisma`，行为不变。
+- 两份文件此前仅相差一行注释（`// max 6 chars enforced in API`），无字段或索引差异。
+
+### 验证情况
+
+- `npm test` 全部通过。
+- `npx prisma validate` 通过（使用占位 `DATABASE_URL`）。
+- `NODE_ENV=production npm run build` 通过。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容
