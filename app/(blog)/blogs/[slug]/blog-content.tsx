@@ -73,8 +73,8 @@ function Linkified({ text }: { text: string }) {
   )
 }
 
-function CommentBox({ postId, parentId, replyToId, replyToName, onPosted, onCancel }: {
-  postId: string; parentId?: string; replyToId?: string; replyToName?: string
+function CommentBox({ postId, parentId, replyToId, replyToName, canUpload = false, onPosted, onCancel }: {
+  postId: string; parentId?: string; replyToId?: string; replyToName?: string; canUpload?: boolean
   onPosted: (c: CommentData) => void; onCancel?: () => void
 }) {
   const { t } = useLocale()
@@ -123,7 +123,7 @@ function CommentBox({ postId, parentId, replyToId, replyToName, onPosted, onCanc
           {onCancel && <button onClick={onCancel}><X className="w-3 h-3" /></button>}
         </div>
       )}
-      <textarea value={content} maxLength={4000} onChange={e => setContent(e.target.value)} onPaste={handlePaste}
+      <textarea value={content} maxLength={4000} onChange={e => setContent(e.target.value)} onPaste={canUpload ? handlePaste : undefined}
         placeholder={t.writeComment}
         className="w-full border-2 border-pixel-black dark:border-pixel-white bg-transparent px-3 py-2 text-xs font-body focus:outline-none resize-y min-h-[60px]" rows={2} />
       {uploading && <p className="font-mono text-[10px] text-pixel-gray-400 mt-1">Uploading...</p>}
@@ -137,15 +137,17 @@ function CommentBox({ postId, parentId, replyToId, replyToName, onPosted, onCanc
         <Button size="sm" onClick={submit} disabled={submitting || uploading || (!content.trim() && !imageUrl)}>
           {submitting ? "..." : t.post}
         </Button>
-        <span className="text-[10px] text-pixel-gray-400 flex items-center gap-1"><ImageIcon className="w-3 h-3" />{t.pasteImage}</span>
+        {canUpload && (
+          <span className="text-[10px] text-pixel-gray-400 flex items-center gap-1"><ImageIcon className="w-3 h-3" />{t.pasteImage}</span>
+        )}
         {onCancel && <Button size="sm" variant="ghost" onClick={onCancel}>{t.cancel}</Button>}
       </div>
     </div>
   )
 }
 
-function CommentItem({ comment, allComments, postId, onNewReply, depth = 0 }: {
-  comment: CommentData; allComments: CommentData[]; postId: string
+function CommentItem({ comment, allComments, postId, canUpload = false, onNewReply, depth = 0 }: {
+  comment: CommentData; allComments: CommentData[]; postId: string; canUpload?: boolean
   onNewReply: (c: CommentData) => void; depth?: number
 }) {
   const { t } = useLocale()
@@ -170,10 +172,11 @@ function CommentItem({ comment, allComments, postId, onNewReply, depth = 0 }: {
         <div className="mt-2">
           <CommentBox postId={postId} parentId={depth === 0 ? comment.id : comment.parentId!}
             replyToId={comment.id} replyToName={comment.user.githubUsername || comment.user.name || ""}
+            canUpload={canUpload}
             onPosted={c => { onNewReply(c); setShowReply(false) }} onCancel={() => setShowReply(false)} />
         </div>
       )}
-      {replies.map(r => <CommentItem key={r.id} comment={r} allComments={allComments} postId={postId} onNewReply={onNewReply} depth={1} />)}
+      {replies.map(r => <CommentItem key={r.id} comment={r} allComments={allComments} postId={postId} canUpload={canUpload} onNewReply={onNewReply} depth={1} />)}
     </div>
   )
 }
@@ -181,6 +184,7 @@ function CommentItem({ comment, allComments, postId, onNewReply, depth = 0 }: {
 export function BlogContent({ post, markdown, initialComments, navigation, related }: Props) {
   const { data: session } = useSession()
   const { t } = useLocale()
+  const canUpload = Boolean((session?.user as { isAdmin?: boolean } | undefined)?.isAdmin)
   const [comments, setComments] = useState(initialComments)
   const [views, setViews] = useState(post.views)
 
@@ -258,12 +262,12 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
       <aside className="lg:w-72 xl:w-80 shrink-0 border-t-2 lg:border-t-0 lg:border-l-2 border-pixel-black dark:border-pixel-white lg:pl-6 xl:lg:pl-8 pt-6 lg:pt-0 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain">
         <h2 className="font-mono text-xs uppercase tracking-widest mb-4 sm:mb-6">// {t.comments}</h2>
         {session ? (
-          <CommentBox postId={post.id} onPosted={c => setComments(prev => [...prev, c])} />
+          <CommentBox postId={post.id} canUpload={canUpload} onPosted={c => setComments(prev => [...prev, c])} />
         ) : (
           <Button size="sm" variant="outline" onClick={() => signIn("github")} className="mb-4 sm:mb-6 text-xs">{t.signInToComment}</Button>
         )}
         <div>
-          {topLevel.map(c => <CommentItem key={c.id} comment={c} allComments={comments} postId={post.id} onNewReply={c => setComments(prev => [...prev, c])} />)}
+          {topLevel.map(c => <CommentItem key={c.id} comment={c} allComments={comments} postId={post.id} canUpload={canUpload} onNewReply={c => setComments(prev => [...prev, c])} />)}
           {comments.length === 0 && <p className="font-body text-xs text-pixel-gray-400">{t.noComments}</p>}
         </div>
       </aside>

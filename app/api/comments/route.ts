@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendNotifications } from "@/lib/notify"
 import { isRateLimited } from "@/lib/rate-limit"
+import { isAllowedCommentImageUrl } from "@/lib/upload-policy"
 
 export async function GET(req: NextRequest) {
   const postId = req.nextUrl.searchParams.get("postId")
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  const isAdmin = Boolean((session.user as { isAdmin?: boolean }).isAdmin)
   if (await isRateLimited(`comments:user:${session.user.id}`, 10, 3600)) {
     return NextResponse.json({ error: "too many comments" }, { status: 429 })
   }
@@ -40,8 +42,8 @@ export async function POST(req: NextRequest) {
   const replyToId = typeof body.replyToId === "string" && body.replyToId ? body.replyToId : null
   if (!postId || (!content && !imageUrl)) return NextResponse.json({ error: "content required" }, { status: 400 })
   if (content.length > 4000) return NextResponse.json({ error: "comment too long" }, { status: 400 })
-  if (imageUrl && imageUrl.length > 7_000_000) return NextResponse.json({ error: "image too large" }, { status: 400 })
-  if (imageUrl && !(/^(https?:\/\/|\/api\/image\?|data:image\/(png|jpeg|gif|webp);base64,)/i.test(imageUrl))) {
+  if (imageUrl && !isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
+  if (imageUrl && !isAllowedCommentImageUrl(imageUrl)) {
     return NextResponse.json({ error: "invalid image URL" }, { status: 400 })
   }
 

@@ -16,7 +16,7 @@ GitHub OAuth 登录流程说明见 [`docs/github-oauth-flow-zh.md`](docs/github-
 | Content | Markdown in GitHub repo |
 | Database | PostgreSQL (Prisma ORM) |
 | Cache | Upstash Redis |
-| Image Storage | Dufs / GitHub repo / base64 fallback |
+| Image Storage | Dufs / GitHub repo (admin-only uploads) |
 | Notifications | Webhook + Email (SMTP) |
 | Deploy | Vercel |
 
@@ -136,11 +136,16 @@ npx prisma db push
 - **Projects**: Full-width list management
 - **Settings**: Site config, image storage (Dufs/GitHub), webhook & email notifications
 
-## Image Storage Priority
+## Image Uploads
+
+Uploads are restricted to administrators. Only PNG, JPEG, GIF and WebP files up to 5 MB are accepted, and the file signature is verified server-side; SVG and other active content are rejected. The `/api/image` proxy also refuses non-raster content types. Comment image attachments are admin-only as well, and `data:` URIs are never accepted, so images cannot be stored inline in the comments table.
+
+Storage priority:
 
 1. **Dufs** — if enabled (env `DUFS_ENABLED=true` or admin toggle)
 2. **GitHub Image Repo** — if configured (env or admin)
-3. **Base64** — last resort fallback (not recommended for production)
+
+If neither backend is configured the upload fails with `503`; images are never inlined as base64 data URIs.
 
 Both Dufs and GitHub image settings can be configured via:
 - `.env.local` / Vercel env vars (loaded at startup)
