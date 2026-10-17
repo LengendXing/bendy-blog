@@ -10,6 +10,7 @@ import { useLocale } from "@/components/locale-provider"
 import { MarkdownTable } from "@/components/markdown-table"
 import { CommentsSkeleton } from "@/components/pixel-skeleton"
 import { PixelImage, PixelMarkdownImage } from "@/components/pixel-image"
+import { formatPostDate } from "@/lib/format-date"
 
 interface CommentData {
   id: string; content: string; imageUrl?: string | null; parentId?: string | null; replyToId?: string | null
@@ -271,8 +272,8 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
   }
 
   const topLevel = comments.filter(c => !c.parentId)
-  const pubDate = post.publishDate ? new Date(post.publishDate) : null
-  const updDate = new Date(post.updatedAt)
+  const pubDate = post.publishDate ? formatPostDate(post.publishDate) : null
+  const updDate = formatPostDate(post.updatedAt)
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12 flex gap-6 sm:gap-8 flex-col lg:flex-row">
@@ -286,11 +287,11 @@ export function BlogContent({ post, markdown, initialComments, navigation, relat
         <div className="flex items-center gap-4 text-[10px] font-mono text-pixel-gray-400 mb-6 sm:mb-8 flex-wrap">
           {pubDate && (
             <span className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" /> Published {pubDate.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}
+              <Calendar className="w-3 h-3" /> Published {pubDate}
             </span>
           )}
           <span className="flex items-center gap-1">
-            Updated {updDate.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}
+            Updated {updDate}
           </span>
         </div>
         <div className="prose-pixel"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: MarkdownPre, table: MarkdownTable, img: PixelMarkdownImage }}>{markdown}</ReactMarkdown></div>

@@ -1,4 +1,5 @@
 import { prisma } from "./prisma"
+import { renderTemplate } from "./notify-template"
 import nodemailer from "nodemailer"
 
 interface NotifyPayload {
@@ -26,11 +27,12 @@ export async function sendNotifications(payload: NotifyPayload) {
 
 async function sendWebhook(config: any, payload: NotifyPayload) {
   const { url, method, headers: hdrs, body: bodyTemplate } = config
-  let bodyStr = JSON.stringify(bodyTemplate || payload)
-  bodyStr = bodyStr.replace(/\{\{title\}\}/g, payload.title)
-    .replace(/\{\{url\}\}/g, payload.url)
-    .replace(/\{\{views\}\}/g, String(payload.views || 0))
-    .replace(/\{\{event\}\}/g, payload.event)
+  const bodyStr = renderTemplate(JSON.stringify(bodyTemplate || payload), {
+    title: payload.title,
+    url: payload.url,
+    views: payload.views || 0,
+    event: payload.event,
+  })
 
   const reqHeaders: Record<string, string> = { "Content-Type": "application/json", ...hdrs }
   await fetch(url, {
@@ -46,12 +48,14 @@ async function sendEmail(config: any, payload: NotifyPayload) {
     port: Number(process.env.SMTP_PORT) || 587,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   })
-  let subject = `Blog ${payload.event}: ${payload.title}`
-  let html = config.template || `<p>Event: ${payload.event}</p><p>Title: ${payload.title}</p><p>URL: ${payload.url}</p><p>Views: ${payload.views || 0}</p>`
-  html = html.replace(/\{\{title\}\}/g, payload.title)
-    .replace(/\{\{url\}\}/g, payload.url)
-    .replace(/\{\{views\}\}/g, String(payload.views || 0))
-    .replace(/\{\{event\}\}/g, payload.event)
+  const subject = `Blog ${payload.event}: ${payload.title}`
+  const template = config.template || `<p>Event: ${payload.event}</p><p>Title: ${payload.title}</p><p>URL: ${payload.url}</p><p>Views: ${payload.views || 0}</p>`
+  const html = renderTemplate(template, {
+    title: payload.title,
+    url: payload.url,
+    views: payload.views || 0,
+    event: payload.event,
+  })
 
   await transport.sendMail({
     from: process.env.SMTP_FROM,

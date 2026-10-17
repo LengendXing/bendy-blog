@@ -22,3 +22,27 @@
 - `npm ci --include=dev`（`NODE_ENV=development`）通过。
 - `npm audit --audit-level=high`、`npx tsc --noEmit`、`npm run test`、`NODE_ENV=production npm run build` 通过。
 - Chrome 桌面与 390px 移动宽度截图确认加载器文字和外圈轨道布局。
+
+## REQ-202610-1032 - 2026-10-17
+
+### 变更内容
+
+- 测试运行器从 Node 内置 `node:test` 迁移到 Vitest，新增 `vitest.config.ts` 与 `test:watch`、`typecheck` 命令。
+- 将既有加载阈值与像素轨道测试迁移为 Vitest 断言，行为覆盖不变。
+- 新增纯逻辑测试：文章排序/日期回退、文章日期格式化、通知模板变量替换。
+- 抽取 `lib/format-date.ts` 与 `lib/notify-template.ts`，用户端列表/详情日期展示与 Webhook/Email 模板共用同一实现。
+- 新增 `GET /api/blog` 与 `GET /api/timeline` 的关键 API 冒烟测试（Mock Prisma 与会话，覆盖匿名/管理员分支）。
+- 新增 `.github/workflows/ci.yml`：push / pull request 触发，依次执行类型检查、Vitest 与生产构建。
+
+### 影响范围
+
+- 用户端博客列表与文章详情的日期展示（无效日期显示为 `—`）。
+- 通知模板的 `{{title}}` / `{{url}}` / `{{views}}` / `{{event}}` 渲染，支持占位符内空白与保留未知占位符。
+- 测试命令、CI 门禁与依赖锁文件；无数据库结构、接口契约或环境变量变更。
+
+### 验证情况
+
+- `npm test`：Vitest 全部用例通过。
+- `npm run typecheck`：0 error。
+- `NODE_ENV=production npm run build`：通过。
+- 本地按 CI 步骤执行 `npm ci --legacy-peer-deps` 验证锁文件可复现安装。

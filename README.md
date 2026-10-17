@@ -67,6 +67,16 @@ npx tsx prisma/seed.ts
 npm run dev
 ```
 
+## Testing
+
+```bash
+npm test          # Vitest: pure logic + API smoke tests
+npm run test:watch
+npm run typecheck
+```
+
+CI runs typecheck, tests and a production build on every push and pull request (`.github/workflows/ci.yml`).
+
 ## Deploy to Vercel
 
 ### 1. Push to GitHub

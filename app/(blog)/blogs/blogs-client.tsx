@@ -8,6 +8,7 @@ import { ColumnSelect } from "@/components/column-select"
 import { BlogListSkeleton } from "@/components/pixel-skeleton"
 import { useDelayedLoading } from "@/components/use-delayed-loading"
 import { LIST_SKELETON_DELAY_MS } from "@/lib/loading"
+import { formatPostDate } from "@/lib/format-date"
 
 interface BlogPostSummary {
   slug: string
@@ -109,8 +110,7 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
   }, [initialColumns])
 
   function displayDate(post: BlogPostSummary) {
-    const date = post.publishDate || post.createdAt
-    return new Date(date).toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })
+    return formatPostDate(post.publishDate || post.createdAt)
   }
 
   return (
