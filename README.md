@@ -104,9 +104,26 @@ SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=
+CRON_SECRET=
+OPS_ALERT_COOLDOWN_SECONDS=300
+SERVICE_NAME=bendy-blog
 ```
 
 > **Note**: `NEXTAUTH_URL` must match your Vercel domain. After first deploy, update the GitHub OAuth callback URL to `https://your-domain.vercel.app/api/auth/callback/github`.
+
+### Observability and content reconciliation
+
+- Every key server operation (publish, delete, import, upload, notification) emits one JSON log line with `event`, `component`, `outcome`, `context` and a redacted `error`. Log collectors can index these fields directly.
+- Failures are also sent through the existing notification center (Admin → Settings → Webhook / Email). Identical failures are throttled by `OPS_ALERT_COOLDOWN_SECONDS` (default 300 seconds) so a broken backend does not flood the channel.
+- `vercel.json` registers a daily cron at `/api/cron/reconcile`. Set `CRON_SECRET` in Vercel; Vercel Cron sends it as a Bearer token. The endpoint compares `BlogPost.githubPath` with files under `posts/` and reports missing, orphaned, duplicate and invalid paths.
+- Run the same check manually:
+
+```bash
+npm run content:reconcile
+npm run content:reconcile -- --json
+```
+
+Exit codes: `0` clean, `1` drift found, `2` check failed.
 
 ### 4. Deploy
 Click Deploy. Vercel will run `prisma generate && next build` automatically.

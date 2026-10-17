@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { BlogContent } from "./blog-content"
 import { sortPostsByEffectiveDate } from "@/lib/post-order"
+import { reportOperationFailure } from "@/lib/ops"
 
 export const revalidate = 60
 const siteUrl = "https://blog.sunchengxin.com"
@@ -71,8 +72,20 @@ export default async function BlogPostPage({ params }: PageParams) {
   const context = await getPostContext(post)
 
   let markdown = ""
-  const file = await getFileContent(post.githubPath)
-  if (file) markdown = file.content
+  try {
+    const file = await getFileContent(post.githubPath)
+    if (file) markdown = file.content
+  } catch (error) {
+    await reportOperationFailure({
+      event: "content.read_failed",
+      component: "page.blog_post",
+      action: "read",
+      error,
+      context: { slug: post.slug, path: post.githubPath },
+      severity: "warning",
+      fingerprint: "content.read_failed:page.blog_post",
+    })
+  }
 
   const articleJsonLd = {
     "@context": "https://schema.org",

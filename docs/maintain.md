@@ -1,5 +1,30 @@
 # 维护记录
 
+## 2026-10-17 - REQ-202610-1028 可观测性与失败告警
+
+### 变更内容
+
+- 新增 `lib/observability.ts`：统一 JSON 结构化日志，敏感字段自动脱敏，日志写入失败不影响业务。
+- 新增 `lib/ops.ts` 与 `lib/alert-throttle.ts`：关键链路失败统一记录并按指纹节流，经现有通知中心（Webhook / 邮件）发送告警。
+- `lib/github.ts` 改为对非 2xx 响应抛出 `GitHubApiError`，不再把写入失败静默当作成功；发布、删除、导入、文章读取和管理端 GitHub 读取均接入失败日志与告警。
+- 上传接口为 Dufs / GitHub 图床增加超时与状态码检查；后端失败时记录 `upload.backend_failed`，回退 base64 时记录 `upload.fallback_used` 并告警。
+- 新增 `lib/reconcile.ts`、`lib/reconcile-runner.ts`、`scripts/reconcile-content.ts` 与 `/api/cron/reconcile`：对账数据库 `BlogPost.githubPath` 与内容仓库 `posts/` 文件，支持缺失、孤儿、重复路径和非法路径检查。
+- `vercel.json` 增加每日 03:17（UTC）对账任务；新增 `CRON_SECRET`、`OPS_ALERT_COOLDOWN_SECONDS`、`SERVICE_NAME` 环境变量说明。
+- 新增结构化日志、告警节流、通知模板转义、对账逻辑和 GitHub 客户端测试。
+
+### 影响范围
+
+- 管理端发布、编辑、删除、批量导入与图片上传。
+- 文章详情页与管理端 GitHub 文件读取。
+- 通知中心发送逻辑（保持原有 Webhook / 邮件配置格式，模板变量仍为 `{{event}}` 等）。
+- Vercel Cron 与运维对账脚本。
+
+### 验证情况
+
+- `npm test`：35 项全部通过。
+- `npx tsc --noEmit`：通过。
+- `NODE_ENV=production npm run build`：通过（使用占位环境变量）。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容

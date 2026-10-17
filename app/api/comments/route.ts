@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendNotifications } from "@/lib/notify"
+import { reportOperationFailure } from "@/lib/ops"
 import { isRateLimited } from "@/lib/rate-limit"
 
 export async function GET(req: NextRequest) {
@@ -22,6 +23,23 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "asc" },
   })
   return NextResponse.json(comments)
+}
+
+function notifyNewComment(post: { title: string; slug: string }, postId: string): void {
+  void sendNotifications({
+    event: "comment",
+    title: post.title,
+    url: `${process.env.NEXTAUTH_URL}/blogs/${post.slug}`,
+  }).catch(error => {
+    void reportOperationFailure({
+      event: "notify.trigger_failed",
+      component: "api.comments",
+      action: "comment",
+      error,
+      context: { postId, slug: post.slug },
+      fingerprint: "notify.trigger_failed:api.comments",
+    })
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -65,7 +83,7 @@ export async function POST(req: NextRequest) {
     },
     include: { user: { select: { name: true, image: true, githubUsername: true } } },
   })
-  sendNotifications({ event: "comment", title: post.title, url: `${process.env.NEXTAUTH_URL}/blogs/${post.slug}` }).catch(() => {})
+  notifyNewComment(post, postId)
   return NextResponse.json(comment)
 }
 

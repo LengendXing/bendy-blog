@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFileContent } from "@/lib/github"
+import { logStructured } from "@/lib/observability"
+import { reportOperationFailure } from "@/lib/ops"
 
 interface ParsedArticle {
   title: string
@@ -72,63 +74,103 @@ function parseDate(dateStr: string): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
+type ImportStage = "parse" | "duplicate_check" | "column" | "github_write" | "db_write"
+
+interface ImportResult {
+  filename: string
+  status: string
+  title?: string
+  error?: string
+}
+
+async function resolveColumnId(category: string): Promise<string | null> {
+  if (!category) return null
+  const catName = category.length > 6 ? category.slice(0, 6) : category
+  let column = await prisma.column.findUnique({ where: { name: catName } })
+  if (!column) column = await prisma.column.create({ data: { name: catName } })
+  return column.id
+}
+
+async function reportImportFailure(
+  filename: string,
+  stage: ImportStage,
+  error: unknown,
+): Promise<void> {
+  await reportOperationFailure({
+    event: "content.import_failed",
+    component: "api.import",
+    action: stage,
+    error,
+    context: { filename, stage, repositoryWriteAttempted: stage === "db_write" },
+    fingerprint: `content.import_failed:api.import:${stage}`,
+  })
+}
+
+async function importParsedArticle(parsed: ParsedArticle, filename: string): Promise<ImportResult> {
+  let stage: ImportStage = "duplicate_check"
+  try {
+    const existing = await prisma.blogPost.findUnique({ where: { slug: parsed.slug } })
+    if (existing) {
+      return { filename, status: "skipped", title: parsed.title, error: "slug already exists" }
+    }
+
+    stage = "column"
+    const columnId = await resolveColumnId(parsed.category)
+
+    stage = "github_write"
+    const githubPath = `posts/${parsed.slug}.md`
+    await saveFileContent(githubPath, parsed.body || `# ${parsed.title}\n`, undefined, `Import: ${parsed.title}`)
+
+    stage = "db_write"
+    const isPublished = parsed.status.toLowerCase() === "published"
+    const publishDate = parseDate(parsed.date || "")
+
+    await prisma.blogPost.create({
+      data: {
+        slug: parsed.slug,
+        title: parsed.title,
+        description: parsed.summary || null,
+        githubPath,
+        published: isPublished,
+        columnId,
+        publishDate,
+      },
+    })
+
+    logStructured("info", {
+      event: "content.imported",
+      component: "api.import",
+      outcome: "success",
+      context: { filename, slug: parsed.slug, path: githubPath, published: isPublished },
+    })
+    return { filename, status: "imported", title: parsed.title }
+  } catch (error: any) {
+    await reportImportFailure(filename, stage, error)
+    return { filename, status: "error", error: error.message || "unknown error" }
+  }
+}
+
+async function importFile(file: File): Promise<ImportResult> {
+  try {
+    const text = await file.text()
+    return await importParsedArticle(parseNotionMd(text), file.name)
+  } catch (error: any) {
+    await reportImportFailure(file.name, "parse", error)
+    return { filename: file.name, status: "error", error: error.message || "unknown error" }
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
 
   const formData = await req.formData()
   const files = formData.getAll("files") as File[]
-
   if (!files.length) return NextResponse.json({ error: "no files" }, { status: 400 })
 
-  const results: Array<{ filename: string; status: string; title?: string; error?: string }> = []
-
+  const results: ImportResult[] = []
   for (const file of files) {
-    const filename = file.name
-    try {
-      const text = await file.text()
-      const parsed = parseNotionMd(text)
-
-      // Check if slug exists
-      const existing = await prisma.blogPost.findUnique({ where: { slug: parsed.slug } })
-      if (existing) {
-        results.push({ filename, status: "skipped", title: parsed.title, error: "slug already exists" })
-        continue
-      }
-
-      // Find or create column
-      let columnId: string | null = null
-      if (parsed.category) {
-        const catName = parsed.category.length > 6 ? parsed.category.slice(0, 6) : parsed.category
-        let col = await prisma.column.findUnique({ where: { name: catName } })
-        if (!col) col = await prisma.column.create({ data: { name: catName } })
-        columnId = col.id
-      }
-
-      // Upload to GitHub
-      const githubPath = `posts/${parsed.slug}.md`
-      await saveFileContent(githubPath, parsed.body || `# ${parsed.title}\n`, undefined, `Import: ${parsed.title}`)
-
-      // Create DB record
-      const isPublished = parsed.status.toLowerCase() === "published"
-      const publishDate = parseDate(parsed.date || "")
-
-      await prisma.blogPost.create({
-        data: {
-          slug: parsed.slug,
-          title: parsed.title,
-          description: parsed.summary || null,
-          githubPath,
-          published: isPublished,
-          columnId,
-          publishDate,
-        },
-      })
-
-      results.push({ filename, status: "imported", title: parsed.title })
-    } catch (e: any) {
-      results.push({ filename, status: "error", error: e.message || "unknown error" })
-    }
+    results.push(await importFile(file))
   }
 
   return NextResponse.json({ results })

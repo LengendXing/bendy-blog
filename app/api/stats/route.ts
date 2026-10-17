@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redis } from "@/lib/redis"
 import { sendNotifications } from "@/lib/notify"
+import { reportOperationFailure } from "@/lib/ops"
 import { isRateLimited, requestIp } from "@/lib/rate-limit"
 
 export async function POST(req: NextRequest) {
@@ -29,7 +30,16 @@ export async function POST(req: NextRequest) {
 
   const shouldNotify = event === "share" || event === "comment" || (event === "view" && updated.views % 100 === 0)
   if (shouldNotify) {
-    sendNotifications({ event, title: post.title, url: `${process.env.NEXTAUTH_URL}/blogs/${slug}`, views: updated.views }).catch(() => {})
+    void sendNotifications({ event, title: post.title, url: `${process.env.NEXTAUTH_URL}/blogs/${slug}`, views: updated.views }).catch(error => {
+      void reportOperationFailure({
+        event: "notify.trigger_failed",
+        component: "api.stats",
+        action: event,
+        error,
+        context: { slug, notifyEvent: event },
+        fingerprint: "notify.trigger_failed:api.stats",
+      })
+    })
   }
   return NextResponse.json({ views: updated.views, shares: updated.shares })
 }
