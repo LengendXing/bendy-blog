@@ -217,7 +217,12 @@ export default function ContentPage() {
                   <span className={`font-mono ${r.status === "imported" ? "text-green-600" : r.status === "skipped" ? "text-yellow-600" : "text-red-500"}`}>[{r.status}]</span>
                   <span className="truncate">{r.filename}</span>
                   {r.title && <span className="text-pixel-gray-400">— {r.title}</span>}
-                  {r.error && <span className="text-red-500">({r.error})</span>}
+                  {r.columnName && <span className="text-pixel-gray-400">— {t.column}: {r.columnName}</span>}
+                  {r.error === "category_too_long" ? (
+                    <span className="text-red-500">({t.importCategoryTooLong.replace("{{category}}", r.category || "").replace("{{max}}", String(r.maxLength || 6))})</span>
+                  ) : r.error ? (
+                    <span className="text-red-500">({r.error})</span>
+                  ) : null}
                 </div>
               ))}
               <p className="font-mono text-xs text-pixel-gray-400 mt-2">{importResults.filter(r => r.status === "imported").length} imported, {importResults.filter(r => r.status === "skipped").length} skipped, {importResults.filter(r => r.status === "error").length} errors</p>

@@ -38,6 +38,7 @@ type T = {
   adminAdded: string; adminRemoved: string; adminUpdated: string; adminUpdateFailed: string
   lastAdminCannotBeRemoved: string; replaceAdmin: string; removeAdminConfirm: string; currentUser: string
   soleAdminCannotBeReplaced: string; adminConfigConflict: string
+  importCategoryTooLong: string
 }
 
 const zh: T = {
@@ -78,6 +79,7 @@ const zh: T = {
   replaceAdmin: "替换管理员", removeAdminConfirm: "确定移除管理员 @{{username}} 吗？", currentUser: "当前账户",
   soleAdminCannotBeReplaced: "请先添加另一名管理员，再替换当前唯一管理员",
   adminConfigConflict: "管理员配置刚刚被其他操作更新，请重试",
+  importCategoryTooLong: "专栏名「{{category}}」超过 {{max}} 个字符，请缩短后重新导入",
 }
 
 const en: T = {
@@ -118,6 +120,7 @@ const en: T = {
   replaceAdmin: "Replace", removeAdminConfirm: "Remove administrator @{{username}}?", currentUser: "current account",
   soleAdminCannotBeReplaced: "Add another administrator before replacing the only administrator",
   adminConfigConflict: "The administrator list changed. Please try again.",
+  importCategoryTooLong: "Column name \"{{category}}\" is longer than {{max}} characters. Shorten it and import again.",
 }
 
 const mn: T = { ...en,

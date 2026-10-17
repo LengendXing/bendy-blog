@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFileContent } from "@/lib/github"
+import { resolveImportCategory } from "@/lib/import-category"
 
 interface ParsedArticle {
   title: string
@@ -81,7 +82,15 @@ export async function POST(req: NextRequest) {
 
   if (!files.length) return NextResponse.json({ error: "no files" }, { status: 400 })
 
-  const results: Array<{ filename: string; status: string; title?: string; error?: string }> = []
+  const results: Array<{
+    filename: string
+    status: "imported" | "skipped" | "error"
+    title?: string
+    columnName?: string | null
+    error?: string
+    category?: string
+    maxLength?: number
+  }> = []
 
   for (const file of files) {
     const filename = file.name
@@ -96,12 +105,26 @@ export async function POST(req: NextRequest) {
         continue
       }
 
+      // Reject overlong category names instead of silently truncating them.
+      // Distinct long categories must not collapse into the same column.
+      const category = resolveImportCategory(parsed.category)
+      if (!category.ok) {
+        results.push({
+          filename,
+          status: "error",
+          title: parsed.title,
+          error: category.code,
+          category: category.category,
+          maxLength: category.maxLength,
+        })
+        continue
+      }
+
       // Find or create column
       let columnId: string | null = null
-      if (parsed.category) {
-        const catName = parsed.category.length > 6 ? parsed.category.slice(0, 6) : parsed.category
-        let col = await prisma.column.findUnique({ where: { name: catName } })
-        if (!col) col = await prisma.column.create({ data: { name: catName } })
+      if (category.name) {
+        let col = await prisma.column.findUnique({ where: { name: category.name } })
+        if (!col) col = await prisma.column.create({ data: { name: category.name } })
         columnId = col.id
       }
 
@@ -125,7 +148,7 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      results.push({ filename, status: "imported", title: parsed.title })
+      results.push({ filename, status: "imported", title: parsed.title, columnName: category.name })
     } catch (e: any) {
       results.push({ filename, status: "error", error: e.message || "unknown error" })
     }
