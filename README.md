@@ -146,6 +146,15 @@ Both Dufs and GitHub image settings can be configured via:
 - `.env.local` / Vercel env vars (loaded at startup)
 - Admin → Settings → Site Settings (runtime override)
 
+## Backup & Recovery
+
+- `npm run db:backup` — 生成带 checksum 的 PostgreSQL 逻辑备份，默认写入 `backups/`。
+- `npm run db:restore -- --file <backup.json>` — 默认 dry-run 校验；加 `--execute` 才会在事务中恢复。
+- `npm run db:restore:drill -- --file <backup.json>` — 在独立临时库执行恢复演练。
+- `npm run reconcile:content` — 对比数据库文章与内容仓库 `posts/*.md`，输出对账报告。
+
+完整操作流程、定时任务与回滚步骤见 [`docs/backup-restore.md`](docs/backup-restore.md)。
+
 ## i18n
 
 Supports: 中文, ᠮᠣᠩᠭᠣᠯ, ئۇيغۇرچە, English, العربية, Русский, 日本語, 한국어

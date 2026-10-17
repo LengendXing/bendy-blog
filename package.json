@@ -9,7 +9,11 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:backup": "tsx scripts/backup-db.ts",
+    "db:restore": "tsx scripts/restore-db.ts",
+    "db:restore:drill": "tsx scripts/restore-drill.ts",
+    "reconcile:content": "tsx scripts/reconcile-content.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "1.0.7",
