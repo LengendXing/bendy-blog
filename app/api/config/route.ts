@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { ADMIN_GITHUB_USERS_CONFIG_KEY } from "@/lib/admins"
+import { parseSiteConfigPayload } from "@/lib/site-config"
 
 const privateResponseHeaders = {
   "Cache-Control": "private, no-store",
@@ -45,16 +46,31 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const data = await req.json()
-  if (Object.prototype.hasOwnProperty.call(data, ADMIN_GITHUB_USERS_CONFIG_KEY)) {
+
+  let data: unknown
+  try {
+    data = await req.json()
+  } catch {
+    return NextResponse.json({ error: "invalid_payload", message: "Request body must be valid JSON" }, { status: 400 })
+  }
+
+  if (typeof data === "object" && data !== null && Object.prototype.hasOwnProperty.call(data, ADMIN_GITHUB_USERS_CONFIG_KEY)) {
     return NextResponse.json({ error: "reserved config key" }, { status: 400 })
   }
-  for (const [key, value] of Object.entries(data)) {
-    await prisma.siteConfig.upsert({
-      where: { key },
-      update: { value: String(value) },
-      create: { key, value: String(value) },
-    })
+
+  const parsed = parseSiteConfigPayload(data)
+  if (!parsed.ok) {
+    return NextResponse.json(parsed.error, { status: 400 })
   }
+
+  const entries = Object.entries(parsed.values)
+  if (entries.length > 0) {
+    await prisma.$transaction(entries.map(([key, value]) => prisma.siteConfig.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value },
+    })))
+  }
+
   return NextResponse.json({ ok: true })
 }

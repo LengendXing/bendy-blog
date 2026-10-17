@@ -1,5 +1,21 @@
 # 维护记录
 
+## 2026-10-17 — /api/config 写入白名单与值校验
+
+### 变更内容
+
+- 新增 `lib/site-config.ts`：集中定义站点配置键白名单与值规则（文本长度、布尔、HTTP(S) URL、GitHub owner/repo）。
+- `app/api/config/route.ts` 的 PUT 在写库前校验请求体：未知键、类型错误、非法 URL 或仓库名返回 400，不再静默落库；多键写入改为事务。
+- 新增 11 项单元测试，覆盖白名单、类型、URL/仓库格式、长度上限与空值清理。
+
+### 影响范围
+
+- 仅管理端设置页保存（PUT /api/config）与站点配置写入；GET 行为、数据库结构与环境变量未变。
+
+### 验证情况
+
+- `npm test`：17/17 通过；`npx tsc --noEmit`：0 error；`NODE_ENV=production npm run build`：通过。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容
