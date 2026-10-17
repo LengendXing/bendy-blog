@@ -11,6 +11,7 @@ import { PixelStatus } from "@/components/pixel-status"
 import { AdminLoading } from "@/components/admin-loading"
 
 const PAGE_SIZE = 15
+const ADMIN_POSTS_URL = "/api/blog?all=true"
 type CreateStage = "saving" | "refreshing" | "opening" | null
 
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -41,7 +42,7 @@ export default function ContentPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/blog").then(r => r.json()),
+      fetch(ADMIN_POSTS_URL).then(r => r.json()),
       fetch("/api/columns").then(r => r.json()),
     ]).then(([p, c]) => {
       setAllPosts(Array.isArray(p) ? p : [])
@@ -133,7 +134,7 @@ export default function ContentPage() {
       setShowNew(false)
       resetNewPost()
       setCreateStage("refreshing")
-      const refreshed = await fetch("/api/blog")
+      const refreshed = await fetch(ADMIN_POSTS_URL)
       if (refreshed.ok) setAllPosts(await refreshed.json())
       setPage(1)
       setCreateStage("opening")
@@ -167,7 +168,7 @@ export default function ContentPage() {
     try {
       const res = await fetch("/api/import", { method: "POST", body: formData })
       const data = await res.json(); setImportResults(data.results || [])
-      const refreshedPosts = await (await fetch("/api/blog")).json()
+      const refreshedPosts = await (await fetch(ADMIN_POSTS_URL)).json()
       const refreshedColumns = await (await fetch("/api/columns")).json()
       if (Array.isArray(refreshedPosts)) setAllPosts(refreshedPosts)
       if (Array.isArray(refreshedColumns)) setColumns(refreshedColumns)

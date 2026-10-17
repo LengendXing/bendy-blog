@@ -5,39 +5,34 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFileContent, getFileContent, deleteFile } from "@/lib/github"
 import { sortPostsByEffectiveDate } from "@/lib/post-order"
+import { planBlogListQuery, PUBLIC_BLOG_POST_SELECT, toPublicBlogPost } from "@/lib/blog-visibility"
 
 export async function GET(req: NextRequest) {
-  const published = req.nextUrl.searchParams.get("published")
+  const all = req.nextUrl.searchParams.get("all") === "true"
   const columnId = req.nextUrl.searchParams.get("columnId")
   const session = await getServerSession(authOptions)
   const isAdmin = Boolean((session?.user as any)?.isAdmin)
-  const where: any = { published: true }
-  if (isAdmin && published !== "true") delete where.published
-  if (columnId) where.columnId = columnId
+  const plan = planBlogListQuery({ all, isAdmin, columnId })
 
-  if (!isAdmin) {
+  if (plan.kind === "forbidden") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 })
+  }
+
+  if (plan.mode === "admin") {
     const posts = await prisma.blogPost.findMany({
-      where,
+      where: plan.where,
       orderBy: { createdAt: "desc" },
-      select: {
-        slug: true,
-        title: true,
-        description: true,
-        published: true,
-        publishDate: true,
-        createdAt: true,
-        column: { select: { id: true, name: true } },
-      },
+      include: { _count: { select: { comments: true } }, column: true },
     })
     return NextResponse.json(sortPostsByEffectiveDate(posts))
   }
 
   const posts = await prisma.blogPost.findMany({
-    where,
+    where: plan.where,
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { comments: true } }, column: true },
+    select: PUBLIC_BLOG_POST_SELECT,
   })
-  return NextResponse.json(sortPostsByEffectiveDate(posts))
+  return NextResponse.json(sortPostsByEffectiveDate(posts.map(toPublicBlogPost)))
 }
 
 export async function POST(req: NextRequest) {

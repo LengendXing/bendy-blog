@@ -26,7 +26,7 @@ export default async function BlogsPage({ searchParams }: { searchParams?: Promi
     published: boolean
     publishDate: Date | null
     createdAt: Date
-    column: { id: string; name: string } | null
+    column: { name: string } | null
   }> = []
   let columns: Array<{ id: string; name: string }> = []
 
@@ -35,7 +35,7 @@ export default async function BlogsPage({ searchParams }: { searchParams?: Promi
       prisma.blogPost.findMany({
         where: { published: true },
         orderBy: { createdAt: "desc" },
-        select: { slug: true, title: true, description: true, published: true, publishDate: true, createdAt: true, column: { select: { id: true, name: true } } },
+        select: { slug: true, title: true, description: true, published: true, publishDate: true, createdAt: true, column: { select: { name: true } } },
       }),
       prisma.column.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     ])
@@ -47,7 +47,12 @@ export default async function BlogsPage({ searchParams }: { searchParams?: Promi
 
   return (
     <BlogsClient
-      initialPosts={orderedPosts.map(post => ({ ...post, publishDate: post.publishDate?.toISOString() || null, createdAt: post.createdAt.toISOString() }))}
+      initialPosts={orderedPosts.map(({ column, ...post }) => ({
+        ...post,
+        columnName: column?.name ?? null,
+        publishDate: post.publishDate?.toISOString() || null,
+        createdAt: post.createdAt.toISOString(),
+      }))}
       initialColumns={columns}
       initialQuery={resolvedSearchParams.q || ""}
     />
