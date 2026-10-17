@@ -1,5 +1,22 @@
 # 维护记录
 
+## 2026-10-17 - /api/stats 防刷与通知面收敛（REQ-202610-1010）
+
+### 变更内容
+
+- 新增 `lib/stats-policy.ts`：事件白名单（仅 `view` / `share`）、slug 长度与控制字符校验、10 分钟访客去重键、按事件区分的限流参数、通知触发规则。
+- `app/api/stats/route.ts`：未知事件直接 400；使用 Redis `SET NX EX 600` 做 IP/登录会话去重，同一访客对同一文章 10 分钟内只计一次；按 IP + 事件 + 文章限流（view 20 次/小时、share 5 次/小时），超限返回 429；仅实际计数时更新数据库与统计缓存；通知只由 `share` 或每 100 次 `view` 触发，移除不可达的 `comment` 分支。
+- 新增 `lib/stats-policy.test.ts` 纯逻辑测试，覆盖事件白名单、slug 校验、去重键、访客身份、通知规则与限流预算。
+
+### 影响范围
+
+- 公开统计接口 `POST /api/stats`；后台 `GET /api/stats` 鉴权与返回结构不变。
+- 无数据库结构变更，无新增环境变量。
+
+### 验证情况
+
+- `npm test`、`npx tsc --noEmit`、`NODE_ENV=production npm run build` 通过。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容
