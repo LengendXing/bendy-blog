@@ -11,11 +11,14 @@ import { PixelStatus } from "@/components/pixel-status"
 import { MarkdownTable } from "@/components/markdown-table"
 import { AdminLoading } from "@/components/admin-loading"
 import { PixelMarkdownImage } from "@/components/pixel-image"
+import { useAdminToast } from "@/components/admin/admin-toast"
+import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
 
 function EditContent() {
   const params = useSearchParams()
   const router = useRouter()
   const { t } = useLocale()
+  const toast = useAdminToast()
   const id = params.get("id")
   const [post, setPost] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -29,7 +32,6 @@ function EditContent() {
   const [publishDate, setPublishDate] = useState("")
   const [saving, setSaving] = useState(false)
   const [savedFeedback, setSavedFeedback] = useState(false)
-  const [saveError, setSaveError] = useState("")
   const [columnAction, setColumnAction] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -48,21 +50,13 @@ function EditContent() {
       return () => controller.abort()
     }
     Promise.all([
-      fetch("/api/blog", { signal: controller.signal }).then(response => {
-        if (!response.ok) throw new Error("posts load failed")
-        return response.json()
-      }),
-      fetch("/api/columns", { signal: controller.signal }).then(response => {
-        if (!response.ok) throw new Error("columns load failed")
-        return response.json()
-      }),
+      apiJson<any[]>("/api/blog", { signal: controller.signal }),
+      apiJson<any[]>("/api/columns", { signal: controller.signal }),
     ]).then(async ([posts, cols]) => {
       if (!Array.isArray(posts)) throw new Error("posts load failed")
       const p = posts.find((x: any) => x.id === id)
       if (!p) throw new Error("Post not found")
-      const fileResponse = await fetch(`/api/github?path=${encodeURIComponent(p.githubPath)}`, { signal: controller.signal })
-      if (!fileResponse.ok) throw new Error("content load failed")
-      const file = await fileResponse.json()
+      const file = await apiJson<{ content?: string }>(`/api/github?path=${encodeURIComponent(p.githubPath)}`, { signal: controller.signal })
       if (controller.signal.aborted) return
       setColumns(Array.isArray(cols) ? cols : [])
       setPost(p); setTitle(p.title); setDescription(p.description || "")
@@ -70,19 +64,25 @@ function EditContent() {
       setPublishDate(p.publishDate ? new Date(p.publishDate).toISOString().slice(0, 10) : "")
       setMarkdown(file.content || "")
     }).catch(error => {
-      if ((error as Error).name !== "AbortError") setLoadError((error as Error).message || "Unable to load post")
+      if (isAbortError(error)) return
+      const message = getApiErrorMessage(error, t)
+      setLoadError(message || t.loadFailed)
+      toast.error(message || t.loadFailed)
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false)
     })
     return () => controller.abort()
-  }, [id])
+  }, [id, t, toast])
 
   async function createColumn(name: string) {
     if (columnAction) return null
     setColumnAction(true)
     try {
-      const res = await fetch("/api/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
-      if (res.ok) { const col = await res.json(); if (!columns.find(c => c.id === col.id)) setColumns(c => [...c, col]); return col }
+      const col = await apiJson<any>("/api/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
+      if (!columns.find(c => c.id === col.id)) setColumns(c => [...c, col])
+      return col
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
       return null
     } finally {
       setColumnAction(false)
@@ -93,12 +93,11 @@ function EditContent() {
     if (columnAction) return null
     setColumnAction(true)
     try {
-      const res = await fetch("/api/columns", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) })
-      if (res.ok) {
-        const col = await res.json()
-        setColumns(cols => cols.map(c => c.id === id ? col : c))
-        return col
-      }
+      const col = await apiJson<any>("/api/columns", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) })
+      setColumns(cols => cols.map(c => c.id === id ? col : c))
+      return col
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
       return null
     } finally {
       setColumnAction(false)
@@ -108,16 +107,14 @@ function EditContent() {
   async function save() {
     if (saving || savedFeedback) return
     setSaving(true)
-    setSaveError("")
     try {
-      const res = await fetch("/api/blog", {
+      await apiFetch("/api/blog", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, title, description, content: markdown, published, columnId, publishDate: publishDate || null }),
       })
-      if (!res.ok) throw new Error("save failed")
-    } catch {
+    } catch (error) {
       setSaving(false)
-      setSaveError(t.saveFailed)
+      toast.error(getApiErrorMessage(error, t))
       return
     }
     setSaving(false)
@@ -150,7 +147,6 @@ function EditContent() {
           <input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} className="accent-pixel-black" />{t.published}
         </label>
         <Button size="sm" onClick={save} disabled={saving || savedFeedback}>{t.save}</Button>
-        {saveError && <span className="font-body text-xs text-red-500" role="alert">{saveError}</span>}
       </div>
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-pixel-black dark:border-pixel-white min-h-[400px] sm:min-h-[500px]">
         <textarea value={markdown} onChange={e => setMarkdown(e.target.value)}

@@ -240,3 +240,11 @@
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+@keyframes pixel-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pixel-toast-in {
+  animation: pixel-toast-in 150ms steps(2) both;
+}

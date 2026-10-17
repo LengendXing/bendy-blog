@@ -6,39 +6,49 @@ import { Textarea } from "@/components/ui/textarea"
 import { useLocale } from "@/components/locale-provider"
 import { locales, localeNames, Locale } from "@/lib/i18n"
 import { AdminLoading } from "@/components/admin-loading"
+import { useAdminToast } from "@/components/admin/admin-toast"
+import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
 
 export default function AboutAdminPage() {
   const { t } = useLocale()
+  const toast = useAdminToast()
   const [activeLocale, setActiveLocale] = useState<Locale>("zh")
   const [data, setData] = useState({ name: "", bio: "", avatar: "", markdown: "", links: {} as Record<string, string> })
   const [linkKey, setLinkKey] = useState("")
   const [linkVal, setLinkVal] = useState("")
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
-    fetch(`/api/about?locale=${activeLocale}`, { signal: controller.signal })
-      .then(r => r.json())
+    setLoadError(false)
+    apiJson<any>(`/api/about?locale=${activeLocale}`, { signal: controller.signal })
       .then(d => setData(d.name ? d : { name: "", bio: "", avatar: "", markdown: "", links: {} }))
       .catch(error => {
-        if ((error as Error).name !== "AbortError") setData({ name: "", bio: "", avatar: "", markdown: "", links: {} })
+        if (isAbortError(error)) return
+        setData({ name: "", bio: "", avatar: "", markdown: "", links: {} })
+        setLoadError(true)
+        toast.error(getApiErrorMessage(error, t))
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [activeLocale])
+  }, [activeLocale, t, toast])
 
   async function save() {
     setSaving(true)
     try {
-      await fetch("/api/about", {
+      await apiFetch("/api/about", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale: activeLocale, ...data }),
       })
+      toast.success(t.savedSuccessfully)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setSaving(false)
     }
@@ -72,6 +82,8 @@ export default function AboutAdminPage() {
 
       {loading ? (
         <AdminLoading size="md" className="min-h-32" />
+      ) : loadError ? (
+        <div className="flex min-h-32 items-center justify-center font-body text-xs text-red-500" role="alert">{t.loadFailed}</div>
       ) : (
         <div className="space-y-4">
           <div><label className="font-mono text-xs block mb-1">{t.title} ({localeNames[activeLocale]})</label><Input value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} /></div>

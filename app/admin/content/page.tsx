@@ -9,6 +9,8 @@ import { Plus, Pencil, Trash2, Upload, X, ChevronLeft, ChevronRight, FilePlus2 }
 import { useLocale } from "@/components/locale-provider"
 import { PixelStatus } from "@/components/pixel-status"
 import { AdminLoading } from "@/components/admin-loading"
+import { useAdminToast } from "@/components/admin/admin-toast"
+import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
 
 const PAGE_SIZE = 15
 type CreateStage = "saving" | "refreshing" | "opening" | null
@@ -17,9 +19,11 @@ const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 export default function ContentPage() {
   const { t } = useLocale()
+  const toast = useAdminToast()
   const [allPosts, setAllPosts] = useState<any[]>([])
   const [columns, setColumns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const [newSlug, setNewSlug] = useState("")
@@ -40,19 +44,26 @@ export default function ContentPage() {
   const router = useRouter()
 
   useEffect(() => {
+    const controller = new AbortController()
+    setLoadError(false)
     Promise.all([
-      fetch("/api/blog").then(r => r.json()),
-      fetch("/api/columns").then(r => r.json()),
+      apiJson<any[]>("/api/blog", { signal: controller.signal }),
+      apiJson<any[]>("/api/columns", { signal: controller.signal }),
     ]).then(([p, c]) => {
+      if (controller.signal.aborted) return
       setAllPosts(Array.isArray(p) ? p : [])
       setColumns(Array.isArray(c) ? c : [])
-      setLoading(false)
-    }).catch(() => {
+    }).catch(error => {
+      if (isAbortError(error)) return
       setAllPosts([])
       setColumns([])
-      setLoading(false)
+      setLoadError(true)
+      toast.error(getApiErrorMessage(error, t))
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false)
     })
-  }, [])
+    return () => controller.abort()
+  }, [t, toast])
 
   useEffect(() => {
     if (!showNew && !createStage) return
@@ -73,8 +84,11 @@ export default function ContentPage() {
     if (columnAction) return null
     setColumnAction(true)
     try {
-      const res = await fetch("/api/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
-      if (res.ok) { const col = await res.json(); if (!columns.find((c: any) => c.id === col.id)) setColumns(c => [...c, col]); return col }
+      const col = await apiJson<any>("/api/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
+      if (!columns.find((c: any) => c.id === col.id)) setColumns(c => [...c, col])
+      return col
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
       return null
     } finally {
       setColumnAction(false)
@@ -85,12 +99,11 @@ export default function ContentPage() {
     if (columnAction) return null
     setColumnAction(true)
     try {
-      const res = await fetch("/api/columns", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) })
-      if (res.ok) {
-        const col = await res.json()
-        setColumns(cols => cols.map(c => c.id === id ? col : c))
-        return col
-      }
+      const col = await apiJson<any>("/api/columns", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) })
+      setColumns(cols => cols.map(c => c.id === id ? col : c))
+      return col
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
       return null
     } finally {
       setColumnAction(false)
@@ -117,7 +130,7 @@ export default function ContentPage() {
     setCreateError("")
     setCreateStage("saving")
     try {
-      const res = await fetch("/api/blog", {
+      const payload = await apiJson<{ id: string }>("/api/blog", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug: newSlug.trim(),
@@ -127,14 +140,12 @@ export default function ContentPage() {
           columnId: newColumnId,
         }),
       })
-      const payload = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(payload.error || "Unable to create post")
 
       setShowNew(false)
       resetNewPost()
       setCreateStage("refreshing")
-      const refreshed = await fetch("/api/blog")
-      if (refreshed.ok) setAllPosts(await refreshed.json())
+      const refreshed = await apiJson<any[]>("/api/blog")
+      if (Array.isArray(refreshed)) setAllPosts(refreshed)
       setPage(1)
       setCreateStage("opening")
       await pause(650)
@@ -143,7 +154,7 @@ export default function ContentPage() {
       setCreateStage(null)
       setCreating(false)
       setShowNew(true)
-      setCreateError(error instanceof Error ? error.message : "Unable to create post")
+      setCreateError(getApiErrorMessage(error, t))
     }
   }
 
@@ -151,8 +162,11 @@ export default function ContentPage() {
     if (!confirm("Delete?")) return
     setDeletingPost(true)
     try {
-      await fetch("/api/blog", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+      await apiFetch("/api/blog", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
       setAllPosts(p => p.filter(x => x.id !== id))
+      toast.success(t.savedSuccessfully)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setDeletingPost(false)
     }
@@ -165,18 +179,23 @@ export default function ContentPage() {
     const formData = new FormData()
     for (const file of Array.from(files)) formData.append("files", file)
     try {
-      const res = await fetch("/api/import", { method: "POST", body: formData })
-      const data = await res.json(); setImportResults(data.results || [])
-      const refreshedPosts = await (await fetch("/api/blog")).json()
-      const refreshedColumns = await (await fetch("/api/columns")).json()
+      const data = await apiJson<{ results?: any[] }>("/api/import", { method: "POST", body: formData })
+      setImportResults(data.results || [])
+      const refreshedPosts = await apiJson<any[]>("/api/blog")
+      const refreshedColumns = await apiJson<any[]>("/api/columns")
       if (Array.isArray(refreshedPosts)) setAllPosts(refreshedPosts)
       if (Array.isArray(refreshedColumns)) setColumns(refreshedColumns)
-    } catch { setImportResults([{ filename: "error", status: "error", error: "Import failed" }]) }
-    setImporting(false)
-    if (fileInputRef.current) fileInputRef.current.value = ""
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
+      setImportResults([{ filename: "error", status: "error", error: getApiErrorMessage(error, t) }])
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
   }
 
   if (loading) return <AdminLoading className="min-h-64" />
+  if (loadError) return <div className="flex min-h-64 items-center justify-center font-body text-xs text-red-500" role="alert">{t.loadFailed}</div>
 
   return (
     <div className="relative min-h-[360px] overflow-hidden" aria-busy={deletingPost}>

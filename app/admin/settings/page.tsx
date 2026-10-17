@@ -8,6 +8,8 @@ import { AdminLoading } from "@/components/admin-loading"
 import { Trash2, Plus, Eye, EyeOff, ExternalLink, Github, Pencil, Search, UserPlus, X } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { PixelImage } from "@/components/pixel-image"
+import { useAdminToast } from "@/components/admin/admin-toast"
+import { ApiError, apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
 
 interface AdminUser {
   username: string
@@ -48,6 +50,7 @@ function SecretInput({ value, onChange, placeholder, disabled }: {
 
 export default function SettingsPage() {
   const { t } = useLocale()
+  const toast = useAdminToast()
   const { data: session } = useSession()
   const [configs, setConfigs] = useState<any[]>([])
   const [tab, setTab] = useState<"site" | "webhook" | "email" | "admins">("site")
@@ -71,8 +74,6 @@ export default function SettingsPage() {
   const [admins, setAdmins] = useState<AdminUser[]>([])
   const [adminsLoading, setAdminsLoading] = useState(true)
   const [adminAction, setAdminAction] = useState("")
-  const [adminNotice, setAdminNotice] = useState("")
-  const [adminError, setAdminError] = useState("")
   const [replaceAdmin, setReplaceAdmin] = useState<AdminUser | null>(null)
   const [githubQuery, setGithubQuery] = useState("")
   const [githubResults, setGithubResults] = useState<GithubSearchUser[]>([])
@@ -82,20 +83,17 @@ export default function SettingsPage() {
   const githubSearchRequestId = useRef(0)
   const githubSearchCache = useRef(new Map<string, GithubSearchUser[]>())
 
-  const loadAdmins = useCallback(async (options?: { preserveError?: boolean }) => {
+  const loadAdmins = useCallback(async () => {
     setAdminsLoading(true)
-    if (!options?.preserveError) setAdminError("")
     try {
-      const res = await fetch("/api/admins", { cache: "no-store" })
-      if (!res.ok) throw new Error("load failed")
-      const data = await res.json()
+      const data = await apiJson<{ admins?: AdminUser[] }>("/api/admins", { cache: "no-store" })
       setAdmins(Array.isArray(data.admins) ? data.admins : [])
-    } catch {
-      setAdminError(t.adminUpdateFailed)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setAdminsLoading(false)
     }
-  }, [t.adminUpdateFailed])
+  }, [t, toast])
 
   const runGithubSearch = useCallback(async (rawQuery: string, requestId: number) => {
     const query = rawQuery.trim()
@@ -121,19 +119,11 @@ export default function SettingsPage() {
 
     try {
       // This intentionally calls GitHub anonymously from the browser: no token or app credential is attached.
-      const res = await fetch(`https://api.github.com/search/users?${params.toString()}`, {
+      const data = await apiJson<any>(`https://api.github.com/search/users?${params.toString()}`, {
         signal: controller.signal,
         cache: "no-store",
       })
       if (requestId !== githubSearchRequestId.current) return
-      if (res.status === 403 || res.status === 429) {
-        setGithubResults([])
-        setGithubSearchError("limited")
-        return
-      }
-      if (!res.ok) throw new Error("search failed")
-
-      const data = await res.json()
       const users = Array.isArray(data.items)
         ? data.items
           .filter((item: any) => item?.type === "User" && typeof item.login === "string")
@@ -149,10 +139,10 @@ export default function SettingsPage() {
       if (requestId !== githubSearchRequestId.current) return
       setGithubResults(users)
     } catch (error) {
-      if ((error as Error).name !== "AbortError" && requestId === githubSearchRequestId.current) {
-        setGithubResults([])
-        setGithubSearchError("failed")
-      }
+      if (isAbortError(error)) return
+      if (requestId !== githubSearchRequestId.current) return
+      setGithubResults([])
+      setGithubSearchError(error instanceof ApiError && (error.status === 403 || error.status === 429) ? "limited" : "failed")
     } finally {
       if (requestId === githubSearchRequestId.current) setGithubSearching(false)
     }
@@ -186,14 +176,8 @@ export default function SettingsPage() {
   useEffect(() => {
     const controller = new AbortController()
     Promise.all([
-      fetch("/api/config", { signal: controller.signal }).then(response => {
-        if (!response.ok) throw new Error("config load failed")
-        return response.json()
-      }),
-      fetch("/api/notify", { signal: controller.signal }).then(response => {
-        if (!response.ok) throw new Error("notifications load failed")
-        return response.json()
-      }),
+      apiJson<any>("/api/config", { signal: controller.signal }),
+      apiJson<any[]>("/api/notify", { signal: controller.signal }),
     ]).then(([cfg, notifs]) => {
       if (controller.signal.aborted) return
       const configuredTitle = cfg.blogTitle?.trim()
@@ -207,16 +191,16 @@ export default function SettingsPage() {
       if (cfg.githubImageToken) setGithubImageToken(cfg.githubImageToken)
       setConfigs(Array.isArray(notifs) ? notifs : [])
     }).catch(error => {
-      if ((error as Error).name !== "AbortError") {
-        setConfigs([])
-        setLoadError(true)
-      }
+      if (isAbortError(error)) return
+      setConfigs([])
+      setLoadError(true)
+      toast.error(getApiErrorMessage(error, t))
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false)
     })
     loadAdmins()
     return () => controller.abort()
-  }, [])
+  }, [loadAdmins, t, toast])
 
   useEffect(() => {
     githubSearchAbort.current?.abort()
@@ -244,10 +228,13 @@ export default function SettingsPage() {
     if (savingSite) return
     setSavingSite(true)
     try {
-      await fetch("/api/config", {
+      await apiFetch("/api/config", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blogTitle, footerText, dufsEnabled: dufsEnabled ? "true" : "false", dufsUrl, dufsUser, dufsPass, githubImageRepo, githubImageToken }),
       })
+      toast.success(t.savedSuccessfully)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setSavingSite(false)
     }
@@ -259,10 +246,12 @@ export default function SettingsPage() {
     let body = {}; try { body = JSON.parse(wf.body) } catch { body = { text: wf.body } }
     setNotificationAction("webhook:add")
     try {
-      const res = await fetch("/api/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "webhook", config: { url: wf.url, method: wf.method, headers, body } }) })
-      if (!res.ok) return
-      const nc = await res.json(); setConfigs(c => [...c, nc])
+      const nc = await apiJson<any>("/api/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "webhook", config: { url: wf.url, method: wf.method, headers, body } }) })
+      setConfigs(c => [...c, nc])
       setWf({ url: "", method: "POST", headers: "{}", body: '{"text":"{{event}}: {{title}} - {{url}} ({{views}} views)"}' })
+      toast.success(t.savedSuccessfully)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setNotificationAction("")
     }
@@ -272,10 +261,12 @@ export default function SettingsPage() {
     if (!ef.to || notificationAction) return
     setNotificationAction("email:add")
     try {
-      const res = await fetch("/api/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "email", config: { to: ef.to, template: ef.template } }) })
-      if (!res.ok) return
-      const nc = await res.json(); setConfigs(c => [...c, nc])
+      const nc = await apiJson<any>("/api/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "email", config: { to: ef.to, template: ef.template } }) })
+      setConfigs(c => [...c, nc])
       setEf({ to: "", template: ef.template })
+      toast.success(t.savedSuccessfully)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setNotificationAction("")
     }
@@ -285,8 +276,10 @@ export default function SettingsPage() {
     if (notificationAction) return
     setNotificationAction(`toggle:${id}`)
     try {
-      const res = await fetch("/api/notify", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, enabled: !enabled }) })
-      if (res.ok) setConfigs(c => c.map(x => x.id === id ? { ...x, enabled: !enabled } : x))
+      await apiFetch("/api/notify", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, enabled: !enabled }) })
+      setConfigs(c => c.map(x => x.id === id ? { ...x, enabled: !enabled } : x))
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setNotificationAction("")
     }
@@ -296,8 +289,10 @@ export default function SettingsPage() {
     if (notificationAction) return
     setNotificationAction(`delete:${id}`)
     try {
-      const res = await fetch("/api/notify", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
-      if (res.ok) setConfigs(c => c.filter(x => x.id !== id))
+      await apiFetch("/api/notify", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+      setConfigs(c => c.filter(x => x.id !== id))
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setNotificationAction("")
     }
@@ -315,11 +310,9 @@ export default function SettingsPage() {
 
   async function saveAdmin(username: string) {
     setAdminAction(username)
-    setAdminError("")
-    setAdminNotice("")
     try {
       const replacing = Boolean(replaceAdmin)
-      const res = await fetch("/api/admins", {
+      const data = await apiJson<{ admins?: AdminUser[] }>("/api/admins", {
         method: replacing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(replacing ? {
@@ -328,18 +321,16 @@ export default function SettingsPage() {
           username,
         } : { username }),
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "update_failed")
       setAdmins(Array.isArray(data.admins) ? data.admins : [])
-      setAdminNotice(replacing ? t.adminUpdated : t.adminAdded)
+      toast.success(replacing ? t.adminUpdated : t.adminAdded)
       setReplaceAdmin(null)
       setGithubQuery("")
       setGithubResults([])
       githubSearchCache.current.clear()
     } catch (error) {
-      const code = (error as Error).message
-      if (code === "admin_config_conflict") await loadAdmins({ preserveError: true })
-      setAdminError(adminErrorMessage(code))
+      const code = error instanceof ApiError ? error.code || "" : ""
+      if (code === "admin_config_conflict") await loadAdmins()
+      toast.error(adminErrorMessage(code))
     } finally {
       setAdminAction("")
     }
@@ -348,27 +339,23 @@ export default function SettingsPage() {
   async function removeAdmin(admin: AdminUser) {
     if (!window.confirm(t.removeAdminConfirm.replace("{{username}}", admin.username))) return
     setAdminAction(admin.githubId || admin.username)
-    setAdminError("")
-    setAdminNotice("")
     try {
-      const res = await fetch("/api/admins", {
+      const data = await apiJson<{ admins?: AdminUser[] }>("/api/admins", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: admin.username, githubId: admin.githubId }),
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "update_failed")
       setAdmins(Array.isArray(data.admins) ? data.admins : [])
-      setAdminNotice(t.adminRemoved)
+      toast.success(t.adminRemoved)
       if (
         replaceAdmin?.githubId && replaceAdmin.githubId === admin.githubId
         || replaceAdmin?.username.toLowerCase() === admin.username.toLowerCase()
       ) setReplaceAdmin(null)
       githubSearchCache.current.clear()
     } catch (error) {
-      const code = (error as Error).message
-      if (code === "admin_config_conflict") await loadAdmins({ preserveError: true })
-      setAdminError(adminErrorMessage(code))
+      const code = error instanceof ApiError ? error.code || "" : ""
+      if (code === "admin_config_conflict") await loadAdmins()
+      toast.error(adminErrorMessage(code))
     } finally {
       setAdminAction("")
     }
@@ -623,8 +610,6 @@ export default function SettingsPage() {
                             setGithubResults([])
                             setGithubSearchError("")
                             setGithubSearching(false)
-                            setAdminNotice("")
-                            setAdminError("")
                           }}
                           disabled={admins.length <= 1 || Boolean(adminAction)}
                           className="p-2 hover:bg-pixel-gray-100 disabled:opacity-50 dark:hover:bg-pixel-gray-900"
@@ -651,10 +636,6 @@ export default function SettingsPage() {
             )}
             </section>
 
-            <div className="min-h-5" aria-live="polite">
-              {adminNotice && <p className="font-body text-xs text-green-600 dark:text-green-400">{adminNotice}</p>}
-              {adminError && <p className="font-body text-xs text-red-500">{adminError}</p>}
-            </div>
           </div>
         </div>
       )}

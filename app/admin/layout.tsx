@@ -8,6 +8,7 @@ import { LocaleProvider, useLocale } from "@/components/locale-provider"
 import { LayoutDashboard, MessageSquare, FileText, User, FolderGit2, Bell, LogOut, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AdminLoading } from "@/components/admin-loading"
+import { AdminToastProvider } from "@/components/admin/admin-toast"
 import { PixelImage } from "@/components/pixel-image"
 import { useState } from "react"
 
@@ -78,34 +79,36 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <div className="min-h-screen flex">
-      {/* Desktop sidebar */}
-      <aside className="w-56 border-r-2 border-pixel-black dark:border-pixel-white flex-col shrink-0 hidden lg:flex">
-        {sidebar}
-      </aside>
-      {/* Mobile overlay */}
-      {mobileNav && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileNav(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-56 bg-pixel-white dark:bg-pixel-black border-r-2 border-pixel-black dark:border-pixel-white flex flex-col z-10">
-            {sidebar}
-          </aside>
+    <AdminToastProvider dismissLabel={t.cancel} regionLabel={t.notifications}>
+      <div className="min-h-screen flex">
+        {/* Desktop sidebar */}
+        <aside className="w-56 border-r-2 border-pixel-black dark:border-pixel-white flex-col shrink-0 hidden lg:flex">
+          {sidebar}
+        </aside>
+        {/* Mobile overlay */}
+        {mobileNav && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setMobileNav(false)} />
+            <aside className="absolute left-0 top-0 bottom-0 w-56 bg-pixel-white dark:bg-pixel-black border-r-2 border-pixel-black dark:border-pixel-white flex flex-col z-10">
+              {sidebar}
+            </aside>
+          </div>
+        )}
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="h-14 border-b-2 border-pixel-black dark:border-pixel-white flex items-center justify-between px-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              <button className="lg:hidden" onClick={() => setMobileNav(true)}><Menu className="w-4 h-4" /></button>
+              <Link href="/blogs" className="font-body text-xs hover:underline">{t.backToBlog}</Link>
+            </div>
+            <div className="flex items-center gap-3">
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
+          </header>
+          <main className="flex-1 p-4 sm:p-6 overflow-auto">{children}</main>
         </div>
-      )}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b-2 border-pixel-black dark:border-pixel-white flex items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <button className="lg:hidden" onClick={() => setMobileNav(true)}><Menu className="w-4 h-4" /></button>
-            <Link href="/blogs" className="font-body text-xs hover:underline">{t.backToBlog}</Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            <ThemeToggle />
-          </div>
-        </header>
-        <main className="flex-1 p-4 sm:p-6 overflow-auto">{children}</main>
       </div>
-    </div>
+    </AdminToastProvider>
   )
 }
 

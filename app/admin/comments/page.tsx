@@ -7,6 +7,8 @@ import { Trash2, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, MessageSquar
 import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
 import { PixelImage } from "@/components/pixel-image"
+import { useAdminToast } from "@/components/admin/admin-toast"
+import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
 
 const PAGE_SIZE = 15
 
@@ -27,35 +29,37 @@ function replyTargetId(comment: any, commentById: Map<string, any>) {
 
 export default function CommentsPage() {
   const { t } = useLocale()
+  const toast = useAdminToast()
   const [comments, setComments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState("")
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("")
   const [drawerSlug, setDrawerSlug] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  const [commentError, setCommentError] = useState("")
   const [commentAction, setCommentAction] = useState("")
 
   useEffect(() => {
-    fetch("/api/comments")
-      .then(async response => {
-        const data = await response.json().catch(() => null)
-        if (!response.ok || !Array.isArray(data)) {
-          setComments([])
-          setCommentError("Unable to load comments")
-        } else {
-          setComments(data)
-        }
-        setLoading(false)
+    const controller = new AbortController()
+    apiJson<any[]>("/api/comments", { signal: controller.signal })
+      .then(data => {
+        if (controller.signal.aborted) return
+        if (!Array.isArray(data)) throw new Error("invalid comments payload")
+        setComments(data)
       })
-      .catch(() => {
+      .catch(error => {
+        if (isAbortError(error)) return
         setComments([])
-        setCommentError("Unable to load comments")
-        setLoading(false)
+        setLoadError(true)
+        toast.error(getApiErrorMessage(error, t))
       })
-  }, [])
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
+  }, [t, toast])
 
   useEffect(() => {
     if (!drawerSlug) return
@@ -114,23 +118,19 @@ export default function CommentsPage() {
   function openDrawer(slug: string) {
     setDrawerSlug(slug)
     setEditId(null)
-    setCommentError("")
   }
 
   function closeDrawer() {
     setDrawerSlug(null)
     setEditId(null)
-    setCommentError("")
   }
 
   async function deleteComment(id: string) {
     if (!confirm("Delete?")) return
     if (commentAction) return
     setCommentAction(`delete:${id}`)
-    setCommentError("")
     try {
-      const res = await fetch("/api/comments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
-      if (!res.ok) { setCommentError("Unable to delete comment"); return }
+      await apiFetch("/api/comments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
       setComments(current => {
         const removed = new Set([id])
         let changed = true
@@ -149,8 +149,8 @@ export default function CommentsPage() {
         setEditId(null)
         setEditContent("")
       }
-    } catch {
-      setCommentError("Unable to delete comment")
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setCommentAction("")
     }
@@ -159,15 +159,13 @@ export default function CommentsPage() {
   async function saveEdit(id: string) {
     if (!editContent.trim() || commentAction) return
     setCommentAction(`edit:${id}`)
-    setCommentError("")
     try {
-      const res = await fetch("/api/comments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, content: editContent.trim() }) })
-      if (!res.ok) { setCommentError("Unable to save comment"); return }
+      await apiFetch("/api/comments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, content: editContent.trim() }) })
       setComments(current => current.map(comment => comment.id === id ? { ...comment, content: editContent.trim() } : comment))
       setEditId(null)
       setEditContent("")
-    } catch {
-      setCommentError("Unable to save comment")
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setCommentAction("")
     }
@@ -237,7 +235,7 @@ export default function CommentsPage() {
             </div>
             {editId !== comment.id && (
               <div className="flex gap-1 shrink-0">
-                <Button size="sm" variant="ghost" onClick={() => { setEditId(comment.id); setEditContent(comment.content); setCommentError("") }} title={t.edit} aria-label={t.edit}><Pencil className="w-3 h-3" /></Button>
+                <Button size="sm" variant="ghost" onClick={() => { setEditId(comment.id); setEditContent(comment.content) }} title={t.edit} aria-label={t.edit}><Pencil className="w-3 h-3" /></Button>
                 <Button size="sm" variant="ghost" onClick={() => deleteComment(comment.id)} title={t.delete} aria-label={t.delete}><Trash2 className="w-3 h-3 text-red-500" /></Button>
               </div>
             )}
@@ -253,6 +251,7 @@ export default function CommentsPage() {
   return (
     <div>
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.commentsMgmt}</h1>
+      {loadError && <p className="mb-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{t.loadFailed}</p>}
 
       <div className="flex items-center gap-0 mb-4 max-w-sm">
         <input value={search} onChange={e => setSearch(e.target.value)}
@@ -326,7 +325,6 @@ export default function CommentsPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-              {commentError && <p className="mb-4 border-l-2 border-red-500 pl-2 font-body text-xs text-red-500" role="alert">{commentError}</p>}
               <div className="space-y-4">
                 {(() => {
                   const roots = selectedGroup.comments.filter(comment => {

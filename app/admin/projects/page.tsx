@@ -7,13 +7,15 @@ import { Pencil, Trash2, X, Check, ExternalLink } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { AdminLoading } from "@/components/admin-loading"
 import { PixelImage } from "@/components/pixel-image"
+import { useAdminToast } from "@/components/admin/admin-toast"
+import { apiFetch, apiJson, getApiErrorMessage, isAbortError } from "@/lib/api-client"
 
 export default function ProjectsAdminPage() {
   const { t } = useLocale()
+  const toast = useAdminToast()
   const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
-  const [actionError, setActionError] = useState("")
   const [editId, setEditId] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [action, setAction] = useState<"save" | "delete" | "">("")
@@ -21,23 +23,21 @@ export default function ProjectsAdminPage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch("/api/projects", { signal: controller.signal })
-      .then(async response => {
-        if (!response.ok) throw new Error("projects load failed")
-        const data = await response.json()
+    apiJson<any[]>("/api/projects", { signal: controller.signal })
+      .then(data => {
         if (!controller.signal.aborted) setProjects(Array.isArray(data) ? data : [])
       })
       .catch(error => {
-        if ((error as Error).name !== "AbortError") {
-          setProjects([])
-          setLoadError(true)
-        }
+        if (isAbortError(error)) return
+        setProjects([])
+        setLoadError(true)
+        toast.error(getApiErrorMessage(error, t))
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [])
+  }, [t, toast])
 
   function resetForm() { setForm({ title: "", description: "", url: "", logoUrl: "", sortOrder: 0 }); setEditId(null); setShowNew(false) }
   function startEdit(p: any) { setEditId(p.id); setShowNew(false); setForm({ title: p.title, description: p.description || "", url: p.url || "", logoUrl: p.logoUrl || "", sortOrder: p.sortOrder }) }
@@ -46,22 +46,18 @@ export default function ProjectsAdminPage() {
     if (!form.title) return
     if (action) return
     setAction("save")
-    setActionError("")
     try {
       if (editId) {
-        const res = await fetch("/api/projects", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editId, ...form }) })
-        if (!res.ok) throw new Error("save failed")
-        const updated = await res.json()
+        const updated = await apiJson<any>("/api/projects", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editId, ...form }) })
         setProjects(p => p.map(x => x.id === editId ? updated : x))
       } else {
-        const res = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) })
-        if (!res.ok) throw new Error("save failed")
-        const newP = await res.json()
+        const newP = await apiJson<any>("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) })
         setProjects(p => [...p, newP])
       }
+      toast.success(t.savedSuccessfully)
       resetForm()
-    } catch {
-      setActionError("Unable to save project")
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setAction("")
     }
@@ -71,13 +67,12 @@ export default function ProjectsAdminPage() {
     if (!confirm("Delete?")) return
     if (action) return
     setAction("delete")
-    setActionError("")
     try {
-      const res = await fetch("/api/projects", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
-      if (!res.ok) throw new Error("delete failed")
+      await apiFetch("/api/projects", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
       setProjects(p => p.filter(x => x.id !== id))
-    } catch {
-      setActionError("Unable to delete project")
+      toast.success(t.savedSuccessfully)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t))
     } finally {
       setAction("")
     }
@@ -90,7 +85,6 @@ export default function ProjectsAdminPage() {
     <div className="relative min-h-[360px] overflow-hidden" aria-busy={Boolean(action)}>
       {action && <AdminLoading size="md" className="absolute inset-0 z-20 min-h-full bg-pixel-white/95 p-2 dark:bg-pixel-black/95" />}
       <h1 className="font-mono text-sm uppercase tracking-widest mb-6">// {t.projectsMgmt}</h1>
-      {actionError && <p className="mb-4 font-body text-xs text-red-500" role="alert">{actionError}</p>}
 
       {(showNew || editId) && (
         <div className="border-2 border-pixel-black dark:border-pixel-white p-4 mb-6 space-y-3">

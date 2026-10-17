@@ -38,6 +38,8 @@ type T = {
   adminAdded: string; adminRemoved: string; adminUpdated: string; adminUpdateFailed: string
   lastAdminCannotBeRemoved: string; replaceAdmin: string; removeAdminConfirm: string; currentUser: string
   soleAdminCannotBeReplaced: string; adminConfigConflict: string
+  requestFailed: string; networkError: string; sessionExpired: string; permissionDenied: string
+  notifications: string
 }
 
 const zh: T = {
@@ -78,6 +80,11 @@ const zh: T = {
   replaceAdmin: "替换管理员", removeAdminConfirm: "确定移除管理员 @{{username}} 吗？", currentUser: "当前账户",
   soleAdminCannotBeReplaced: "请先添加另一名管理员，再替换当前唯一管理员",
   adminConfigConflict: "管理员配置刚刚被其他操作更新，请重试",
+  requestFailed: "操作失败，请稍后重试",
+  networkError: "网络异常，请检查连接后重试",
+  sessionExpired: "登录已失效，请重新登录",
+  permissionDenied: "没有权限执行此操作",
+  notifications: "通知",
 }
 
 const en: T = {
@@ -118,6 +125,11 @@ const en: T = {
   replaceAdmin: "Replace", removeAdminConfirm: "Remove administrator @{{username}}?", currentUser: "current account",
   soleAdminCannotBeReplaced: "Add another administrator before replacing the only administrator",
   adminConfigConflict: "The administrator list changed. Please try again.",
+  requestFailed: "Request failed. Please try again.",
+  networkError: "Network error. Check your connection and try again.",
+  sessionExpired: "Your session has expired. Please sign in again.",
+  permissionDenied: "You do not have permission to perform this action.",
+  notifications: "Notifications",
 }
 
 const mn: T = { ...en,
