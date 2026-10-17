@@ -132,7 +132,7 @@ npx prisma db push
 - **Overview**: Stats + pixel calendar + daily timeline
 - **Content**: CRUD with live Markdown preview + column tags
 - **Comments**: Grouped by post, expand/collapse, edit/delete
-- **About Page**: Multi-language config (zh/en/mn/ug/ar/ru/ja/ko)
+- **About Page**: Multi-language config (zh/en/mn/ug/bo/ar/ru/ja/ko)
 - **Projects**: Full-width list management
 - **Settings**: Site config, image storage (Dufs/GitHub), webhook & email notifications
 
@@ -148,6 +148,6 @@ Both Dufs and GitHub image settings can be configured via:
 
 ## i18n
 
-Supports: 中文, ᠮᠣᠩᠭᠣᠯ, ئۇيغۇرچە, English, العربية, Русский, 日本語, 한국어
+Supports: 中文, ᠮᠣᠩᠭᠣᠯ, ئۇيغۇرچە, བོད་སྐད།, English, العربية, Русский, 日本語, 한국어
 
 UI labels + About page content switch per language. RTL supported for Arabic and Uyghur.
