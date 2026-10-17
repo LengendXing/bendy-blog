@@ -16,7 +16,7 @@ interface BlogPostSummary {
   published: boolean
   publishDate: string | null
   createdAt: string
-  column: { id: string; name: string } | null
+  columnName: string | null
 }
 
 interface ColumnSummary {
@@ -46,7 +46,7 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
   const visiblePosts = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase()
     if (!normalized) return posts
-    return posts.filter(post => [post.title, post.description || "", post.column?.name || ""]
+    return posts.filter(post => [post.title, post.description || "", post.columnName || ""]
       .some(value => value.toLocaleLowerCase().includes(normalized)))
   }, [posts, query])
 
@@ -70,7 +70,7 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
     const controller = new AbortController()
     setLoading(true)
     setLoadError(false)
-    fetch(`/api/blog?published=true&columnId=${encodeURIComponent(columnId)}`, { signal: controller.signal })
+    fetch(`/api/blog?columnId=${encodeURIComponent(columnId)}`, { signal: controller.signal })
       .then(async response => {
         const data = await response.json().catch(() => null)
         if (!response.ok || !Array.isArray(data)) throw new Error("blog list request failed")
@@ -150,7 +150,7 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
                 <div className="flex items-baseline gap-2 sm:gap-4 min-w-0">
                   <span className="font-mono text-xs text-pixel-gray-400 shrink-0">{String(index + 1).padStart(2, "0")}</span>
                   <span className="font-body text-sm group-hover:underline underline-offset-4 truncate">{post.title}</span>
-                  {post.column && <span className="font-mono text-[10px] text-pixel-gray-400 border border-pixel-gray-300 dark:border-pixel-gray-700 px-1 shrink-0 hidden sm:inline">{post.column.name}</span>}
+                  {post.columnName && <span className="font-mono text-[10px] text-pixel-gray-400 border border-pixel-gray-300 dark:border-pixel-gray-700 px-1 shrink-0 hidden sm:inline">{post.columnName}</span>}
                 </div>
                 <time dateTime={post.publishDate || post.createdAt} className="font-mono text-[10px] sm:text-xs text-pixel-gray-400 shrink-0">{displayDate(post)}</time>
               </div>

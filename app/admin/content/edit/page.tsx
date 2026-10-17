@@ -48,7 +48,7 @@ function EditContent() {
       return () => controller.abort()
     }
     Promise.all([
-      fetch("/api/blog", { signal: controller.signal }).then(response => {
+      fetch("/api/blog?all=true", { signal: controller.signal }).then(response => {
         if (!response.ok) throw new Error("posts load failed")
         return response.json()
       }),
