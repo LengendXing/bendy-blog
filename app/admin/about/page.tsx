@@ -5,12 +5,15 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useLocale } from "@/components/locale-provider"
 import { locales, localeNames, Locale } from "@/lib/i18n"
+import { hasAboutContent } from "@/lib/about-locale"
 import { AdminLoading } from "@/components/admin-loading"
+
+const EMPTY_ABOUT = { name: "", bio: "", avatar: "", markdown: "", links: {} as Record<string, string> }
 
 export default function AboutAdminPage() {
   const { t } = useLocale()
   const [activeLocale, setActiveLocale] = useState<Locale>("zh")
-  const [data, setData] = useState({ name: "", bio: "", avatar: "", markdown: "", links: {} as Record<string, string> })
+  const [data, setData] = useState(EMPTY_ABOUT)
   const [linkKey, setLinkKey] = useState("")
   const [linkVal, setLinkVal] = useState("")
   const [saving, setSaving] = useState(false)
@@ -19,11 +22,11 @@ export default function AboutAdminPage() {
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
-    fetch(`/api/about?locale=${activeLocale}`, { signal: controller.signal })
+    fetch(`/api/about?locale=${activeLocale}&fallback=0`, { signal: controller.signal })
       .then(r => r.json())
-      .then(d => setData(d.name ? d : { name: "", bio: "", avatar: "", markdown: "", links: {} }))
+      .then(d => setData(hasAboutContent(d) ? d : EMPTY_ABOUT))
       .catch(error => {
-        if ((error as Error).name !== "AbortError") setData({ name: "", bio: "", avatar: "", markdown: "", links: {} })
+        if ((error as Error).name !== "AbortError") setData(EMPTY_ABOUT)
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)

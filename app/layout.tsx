@@ -2,6 +2,7 @@ import "@/styles/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthSessionProvider } from "@/components/session-provider"
 import { PageTransition } from "@/components/page-transition"
+import { buildLocaleInitScript } from "@/lib/locale-direction"
 import type { Metadata, Viewport } from "next"
 
 const siteUrl = "https://blog.sunchengxin.com"
@@ -57,8 +58,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html lang="zh-CN" dir="ltr" suppressHydrationWarning>
       <head>
+        <script id="locale-init" dangerouslySetInnerHTML={{ __html: buildLocaleInitScript() }} />
         <link rel="alternate" type="application/rss+xml" title="Bendy Blog RSS" href="/feed.xml" />
       </head>
       <body>

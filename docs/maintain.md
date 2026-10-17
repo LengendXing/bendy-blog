@@ -1,5 +1,24 @@
 # 维护记录
 
+## v0.1.2 - 2026-10-17
+
+### 变更内容
+
+- 修复刷新后 RTL 方向丢失：在 hydration 前读取本地语言并恢复 `dir`/`lang`，语言切换时同步更新文档属性（REQ-202610-1034，B-08）。
+- 保持 viewport 允许用户缩放，未设置 `maximumScale` 或 `userScalable: false`（B-19）。
+- 补齐 zh/en/mn/ug/bo/ar/ru/ja/ko 九种语言的全部界面词条，小语种不再逐键回退英文（B-18）。
+- 关于页内容回退改为「请求语言 → 英文 → 中文」，管理端按语言编辑时使用 `fallback=0`，避免把回退内容写回当前语言。
+- README 语言列表补充藏语（bo）。
+
+### 影响范围
+
+- 全局布局、语言切换器、关于页 API 与管理端。
+- 所有界面文案与 README 多语言说明。
+
+### 验证情况
+
+- `npx tsc --noEmit`、`npm test`、`NODE_ENV=production npm run build` 通过。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容
