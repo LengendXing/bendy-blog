@@ -1,5 +1,22 @@
 # 维护记录
 
+## 2026-10-17 - REQ-202610-1025 博客标题占位判断去重
+
+### 变更内容
+
+- 新增 `lib/blog-title.ts`：集中维护默认标题与三组历史占位标题，提供 `isPlaceholderBlogTitle` / `resolveBlogTitle`，空值与纯空白标题统一按占位处理。
+- `app/(blog)/layout.tsx` 与 `app/admin/settings/page.tsx` 改用共享函数，删除各自的字面量判断；后台设置页默认值同步引用 `DEFAULT_BLOG_TITLE`。
+- 新增 `lib/blog-title.test.ts` 4 项单元测试，覆盖空值、大小写与首尾空白、历史占位标题及自定义标题。
+
+### 影响范围
+
+- 用户端页头博客标题与后台设置页标题回填；接口、数据库结构与环境变量未变。
+- 纯空白标题此前在页头会原样渲染、在后台却被忽略，现在两处统一回退为默认标题。
+
+### 验证情况
+
+- `npm test`：10/10 通过；`npx tsc --noEmit`：0 error；`NODE_ENV=production npm run build`：通过。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容

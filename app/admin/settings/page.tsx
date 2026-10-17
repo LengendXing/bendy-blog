@@ -8,6 +8,7 @@ import { AdminLoading } from "@/components/admin-loading"
 import { Trash2, Plus, Eye, EyeOff, ExternalLink, Github, Pencil, Search, UserPlus, X } from "lucide-react"
 import { useLocale } from "@/components/locale-provider"
 import { PixelImage } from "@/components/pixel-image"
+import { DEFAULT_BLOG_TITLE, isPlaceholderBlogTitle } from "@/lib/blog-title"
 
 interface AdminUser {
   username: string
@@ -54,7 +55,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
 
-  const [blogTitle, setBlogTitle] = useState("Bendy Blog")
+  const [blogTitle, setBlogTitle] = useState(DEFAULT_BLOG_TITLE)
   const [footerText, setFooterText] = useState("Built with nextjs & By @SunChengXin")
   const [dufsEnabled, setDufsEnabled] = useState(false)
   const [dufsUrl, setDufsUrl] = useState("")
@@ -197,7 +198,7 @@ export default function SettingsPage() {
     ]).then(([cfg, notifs]) => {
       if (controller.signal.aborted) return
       const configuredTitle = cfg.blogTitle?.trim()
-      if (configuredTitle && !["BENDY BLOG", "笨迪博客 BENDYBLOG", "笨迪博客 BENDYBLOG | 码农修炼笔记"].includes(configuredTitle.toUpperCase())) setBlogTitle(configuredTitle)
+      if (!isPlaceholderBlogTitle(configuredTitle)) setBlogTitle(configuredTitle)
       if (cfg.footerText) setFooterText(cfg.footerText)
       setDufsEnabled(cfg.dufsEnabled === "true")
       if (cfg.dufsUrl) setDufsUrl(cfg.dufsUrl)

@@ -3,6 +3,7 @@ import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { LocaleProvider, useLocale } from "@/components/locale-provider"
+import { resolveBlogTitle } from "@/lib/blog-title"
 import { Globe2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -66,10 +67,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { fetch("/api/config").then(r => r.json()).then(setConfig).catch(() => {}) }, [])
 
-  const normalizedTitle = config.blogTitle?.trim().toUpperCase()
-  const blogTitle = !config.blogTitle || normalizedTitle === "BENDY BLOG" || normalizedTitle === "笨迪博客 BENDYBLOG | 码农修炼笔记" || normalizedTitle === "笨迪博客 BENDYBLOG"
-    ? "Bendy Blog"
-    : config.blogTitle
+  const blogTitle = resolveBlogTitle(config.blogTitle)
   const footerText = config.footerText || "Built with nextjs & By @SunChengXin"
 
   return (
