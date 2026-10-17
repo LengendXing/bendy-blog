@@ -13,6 +13,7 @@ import {
   statsDedupKey,
   statsRateLimitKey,
   statsViewerIdentity,
+  MAX_STATS_BODY_BYTES,
   STATS_DEDUP_WINDOW_SECONDS,
   STATS_RATE_LIMITS,
   type StatsEvent,
@@ -43,6 +44,11 @@ async function viewerIdentity(req: NextRequest, ip: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const contentLength = Number(req.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_STATS_BODY_BYTES) {
+    return NextResponse.json({ error: "payload too large" }, { status: 413 })
+  }
+
   let body: unknown
   try { body = await req.json() } catch { return NextResponse.json({ error: "invalid body" }, { status: 400 }) }
   const payload = body && typeof body === "object" ? body as Record<string, unknown> : {}

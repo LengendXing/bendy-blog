@@ -6,10 +6,26 @@ import { prisma } from "@/lib/prisma"
 import { saveFileContent, getFileContent, deleteFile } from "@/lib/github"
 import { sortPostsByEffectiveDate } from "@/lib/post-order"
 import { planBlogListQuery, PUBLIC_BLOG_POST_SELECT, toPublicBlogPost } from "@/lib/blog-visibility"
+import {
+  MAX_CONTENT_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_TITLE_LENGTH,
+  normalizeDate,
+  normalizeEntityId,
+  normalizeOptionalEntityId,
+  normalizeOptionalText,
+  normalizeSlug,
+  normalizeText,
+} from "@/lib/public-input"
 
 export async function GET(req: NextRequest) {
   const all = req.nextUrl.searchParams.get("all") === "true"
-  const columnId = req.nextUrl.searchParams.get("columnId")
+  const rawColumnId = req.nextUrl.searchParams.get("columnId")
+  const columnId = rawColumnId ? normalizeEntityId(rawColumnId) : null
+  if (rawColumnId && !columnId) {
+    return NextResponse.json({ error: "invalid columnId" }, { status: 400 })
+  }
+
   const session = await getServerSession(authOptions)
   const isAdmin = Boolean((session?.user as any)?.isAdmin)
   const plan = planBlogListQuery({ all, isAdmin, columnId })
@@ -38,38 +54,100 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { slug, title, description, content, published, columnId, publishDate } = await req.json()
+
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: "invalid body" }, { status: 400 }) }
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "invalid body" }, { status: 400 })
+
+  const raw = body as Record<string, unknown>
+  const slug = normalizeSlug(raw.slug)
+  const title = normalizeText(raw.title, MAX_TITLE_LENGTH)
+  const description = normalizeOptionalText(raw.description, MAX_DESCRIPTION_LENGTH)
+  const columnId = normalizeOptionalEntityId(raw.columnId)
+  const publishDate = normalizeDate(raw.publishDate)
+  if (!slug) return NextResponse.json({ error: "invalid slug" }, { status: 400 })
+  if (!title) return NextResponse.json({ error: "invalid title" }, { status: 400 })
+  if (description === undefined) return NextResponse.json({ error: "invalid description" }, { status: 400 })
+  if (columnId === undefined) return NextResponse.json({ error: "invalid columnId" }, { status: 400 })
+  if (publishDate === undefined) return NextResponse.json({ error: "invalid publishDate" }, { status: 400 })
+  if (raw.content !== undefined && (typeof raw.content !== "string" || raw.content.length > MAX_CONTENT_LENGTH)) {
+    return NextResponse.json({ error: "invalid content" }, { status: 400 })
+  }
+
+  const existing = await prisma.blogPost.findUnique({ where: { slug }, select: { id: true } })
+  if (existing) return NextResponse.json({ error: "slug already exists" }, { status: 409 })
+
   const githubPath = `posts/${slug}.md`
-  await saveFileContent(githubPath, content || `# ${title}\n`, undefined, `Create post: ${title}`)
-  return NextResponse.json(await prisma.blogPost.create({
-    data: {
-      slug, title, description, githubPath,
-      published: published ?? false,
-      columnId: columnId || null,
-      publishDate: publishDate ? new Date(publishDate) : null,
-    },
-    include: { column: true },
-  }))
+  await saveFileContent(githubPath, (raw.content as string) || `# ${title}\n`, undefined, `Create post: ${title}`)
+  try {
+    return NextResponse.json(await prisma.blogPost.create({
+      data: {
+        slug, title, description, githubPath,
+        published: raw.published === true,
+        columnId,
+        publishDate,
+      },
+      include: { column: true },
+    }))
+  } catch (error) {
+    if ((error as { code?: string }).code === "P2002") {
+      return NextResponse.json({ error: "slug already exists" }, { status: 409 })
+    }
+    throw error
+  }
 }
 
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { id, title, description, content, published, columnId, publishDate } = await req.json()
+
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: "invalid body" }, { status: 400 }) }
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "invalid body" }, { status: 400 })
+
+  const raw = body as Record<string, unknown>
+  const id = normalizeEntityId(raw.id)
+  if (!id) return NextResponse.json({ error: "invalid id" }, { status: 400 })
+
+  const title = raw.title === undefined ? undefined : normalizeText(raw.title, MAX_TITLE_LENGTH)
+  if (title === null) return NextResponse.json({ error: "invalid title" }, { status: 400 })
+
+  let description: string | null | undefined
+  if (raw.description !== undefined) {
+    description = normalizeOptionalText(raw.description, MAX_DESCRIPTION_LENGTH)
+    if (description === undefined) return NextResponse.json({ error: "invalid description" }, { status: 400 })
+  }
+
+  let columnId: string | null | undefined
+  if (raw.columnId !== undefined) {
+    columnId = normalizeOptionalEntityId(raw.columnId)
+    if (columnId === undefined) return NextResponse.json({ error: "invalid columnId" }, { status: 400 })
+  }
+
+  let publishDate: Date | null | undefined
+  if (raw.publishDate !== undefined) {
+    publishDate = normalizeDate(raw.publishDate)
+    if (publishDate === undefined) return NextResponse.json({ error: "invalid publishDate" }, { status: 400 })
+  }
+
+  if (raw.content !== undefined && (typeof raw.content !== "string" || raw.content.length > MAX_CONTENT_LENGTH)) {
+    return NextResponse.json({ error: "invalid content" }, { status: 400 })
+  }
+
   const post = await prisma.blogPost.findUnique({ where: { id } })
   if (!post) return NextResponse.json({ error: "not found" }, { status: 404 })
-  if (content !== undefined) {
+  if (raw.content !== undefined) {
     const file = await getFileContent(post.githubPath)
-    await saveFileContent(post.githubPath, content, file?.sha, `Update: ${title || post.title}`)
+    await saveFileContent(post.githubPath, raw.content as string, file?.sha, `Update: ${title || post.title}`)
   }
   return NextResponse.json(await prisma.blogPost.update({
     where: { id },
     data: {
-      ...(title && { title }),
+      ...(title !== undefined && { title }),
       ...(description !== undefined && { description }),
-      ...(published !== undefined && { published }),
-      ...(columnId !== undefined && { columnId: columnId || null }),
-      ...(publishDate !== undefined && { publishDate: publishDate ? new Date(publishDate) : null }),
+      ...(typeof raw.published === "boolean" && { published: raw.published }),
+      ...(columnId !== undefined && { columnId }),
+      ...(publishDate !== undefined && { publishDate }),
     },
     include: { column: true },
   }))
@@ -78,7 +156,10 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { id } = await req.json()
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: "invalid body" }, { status: 400 }) }
+  const id = normalizeEntityId((body as { id?: unknown } | null)?.id)
+  if (!id) return NextResponse.json({ error: "invalid id" }, { status: 400 })
   const post = await prisma.blogPost.findUnique({ where: { id } })
   if (!post) return NextResponse.json({ error: "not found" }, { status: 404 })
   const file = await getFileContent(post.githubPath)

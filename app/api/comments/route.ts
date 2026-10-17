@@ -5,12 +5,24 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendNotifications } from "@/lib/notify"
 import { isRateLimited, requestIp } from "@/lib/rate-limit"
-import { validateCommentInput } from "@/lib/comment-policy"
+import { MAX_COMMENT_BODY_BYTES, MAX_COMMENT_LENGTH, validateCommentInput } from "@/lib/comment-policy"
+import { normalizeEntityId } from "@/lib/public-input"
 
 export async function GET(req: NextRequest) {
-  const postId = req.nextUrl.searchParams.get("postId")
+  const rawPostId = req.nextUrl.searchParams.get("postId")
+  const postId = rawPostId ? normalizeEntityId(rawPostId) : null
+  if (rawPostId && !postId) {
+    return NextResponse.json({ error: "invalid postId" }, { status: 400 })
+  }
+
   const session = await getServerSession(authOptions)
   const isAdmin = Boolean((session?.user as any)?.isAdmin)
+  // Anonymous callers must scope the query to one post; otherwise the route
+  // would dump every comment on the site in a single request.
+  if (!isAdmin && !postId) {
+    return NextResponse.json({ error: "postId required" }, { status: 400 })
+  }
+
   const comments = await prisma.comment.findMany({
     where: {
       ...(postId ? { postId } : {}),
@@ -51,6 +63,11 @@ async function validateCommentReferences(postId: string, parentId: string | null
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+
+  const contentLength = Number(req.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_COMMENT_BODY_BYTES) {
+    return NextResponse.json({ error: "payload too large" }, { status: 413 })
+  }
 
   const userId = session.user.id
   const ip = requestIp(req)
@@ -101,7 +118,10 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { id } = await req.json()
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: "invalid body" }, { status: 400 }) }
+  const id = normalizeEntityId((body as { id?: unknown } | null)?.id)
+  if (!id) return NextResponse.json({ error: "invalid id" }, { status: 400 })
   await prisma.comment.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }
@@ -109,6 +129,14 @@ export async function DELETE(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!(session?.user as any)?.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 })
-  const { id, content } = await req.json()
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: "invalid body" }, { status: 400 }) }
+  const raw = body as { id?: unknown; content?: unknown } | null
+  const id = normalizeEntityId(raw?.id)
+  const content = typeof raw?.content === "string" ? raw.content.trim() : ""
+  if (!id) return NextResponse.json({ error: "invalid id" }, { status: 400 })
+  if (!content || content.length > MAX_COMMENT_LENGTH) {
+    return NextResponse.json({ error: "invalid content" }, { status: 400 })
+  }
   return NextResponse.json(await prisma.comment.update({ where: { id }, data: { content } }))
 }

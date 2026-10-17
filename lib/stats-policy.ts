@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { MAX_SLUG_LENGTH, normalizeSlug } from "./public-input"
 
 /** Only these events are accepted by POST /api/stats. */
 export const STATS_EVENTS = ["view", "share"] as const
@@ -9,7 +10,10 @@ export type StatsEvent = (typeof STATS_EVENTS)[number]
 export const STATS_DEDUP_WINDOW_SECONDS = 10 * 60
 
 /** Blog slugs are short; cap the input so Redis keys stay bounded. */
-export const STATS_SLUG_MAX_LENGTH = 200
+export const STATS_SLUG_MAX_LENGTH = MAX_SLUG_LENGTH
+
+/** The public stats payload is tiny; reject anything that could be abusive. */
+export const MAX_STATS_BODY_BYTES = 4 * 1024
 
 export const STATS_RATE_LIMITS: Record<StatsEvent, { limit: number; windowSeconds: number }> = {
   view: { limit: 20, windowSeconds: 60 * 60 },
@@ -21,13 +25,9 @@ export function parseStatsEvent(value: unknown): StatsEvent | null {
   return value === "view" || value === "share" ? value : null
 }
 
-/** Trims and validates a slug without imposing a character-set rule. */
+/** Trims and validates a slug with the same rules as the public routes. */
 export function normalizeStatsSlug(value: unknown): string | null {
-  if (typeof value !== "string") return null
-  const slug = value.trim()
-  if (!slug || slug.length > STATS_SLUG_MAX_LENGTH) return null
-  if (/[\u0000-\u001f\u007f]/.test(slug)) return null
-  return slug
+  return normalizeSlug(value)
 }
 
 export interface StatsViewer {

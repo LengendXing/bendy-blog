@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFileContent } from "@/lib/github"
+import { normalizeSlug } from "@/lib/public-input"
 
 interface ParsedArticle {
   title: string
@@ -88,6 +89,12 @@ export async function POST(req: NextRequest) {
     try {
       const text = await file.text()
       const parsed = parseNotionMd(text)
+      const slug = normalizeSlug(parsed.slug)
+      if (!slug) {
+        results.push({ filename, status: "error", error: "invalid slug" })
+        continue
+      }
+      parsed.slug = slug
 
       // Check if slug exists
       const existing = await prisma.blogPost.findUnique({ where: { slug: parsed.slug } })

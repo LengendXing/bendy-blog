@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { isSafeImageContentType, normalizeContentType } from "@/lib/upload-policy"
+import { MAX_IMAGE_PROXY_URL_LENGTH } from "@/lib/public-input"
 
 const IMAGE_PROXY_TIMEOUT_MS = 15_000
 const MAX_PROXY_BYTES = 10 * 1024 * 1024
@@ -9,6 +10,9 @@ const MAX_PROXY_BYTES = 10 * 1024 * 1024
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url")
   if (!url) return NextResponse.json({ error: "missing url" }, { status: 400 })
+  if (url.length > MAX_IMAGE_PROXY_URL_LENGTH) {
+    return NextResponse.json({ error: "image URL too long" }, { status: 400 })
+  }
 
   const dufsUrlCfg = await prisma.siteConfig.findUnique({ where: { key: "dufsUrl" } })
   const dufsUrl = dufsUrlCfg?.value || process.env.DUFS_URL || ""

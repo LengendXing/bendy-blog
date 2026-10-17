@@ -1,5 +1,27 @@
 # 维护记录
 
+## 2026-10-17 - 公开面安全基线（REQ-202610-1029）
+
+### 变更内容
+
+- 上传与图片代理：上传接口仅管理员可用；限制请求体与文件大小（5 MB）、MIME 白名单与 magic bytes 校验；移除 base64 兜底，存储未配置返回 503；图片代理限制上游大小、超时、拒绝重定向与 SVG/HTML，并补 `nosniff` 与沙箱 CSP。
+- 评论：新增 `lib/comment-policy.ts`，统一校验 postId/parentId/replyId、正文长度（2000）、图片 URL（仅 `/api/image?` 或 HTTPS，≤2048 字符）；按用户与 IP 双重限流；禁止普通用户附加图片；GET 匿名请求必须携带合法 `postId`，避免全站评论一次性导出。
+- 统计：新增 `lib/stats-policy.ts`，事件仅 `view` / `share`，slug 长度与控制字符校验，Redis `SET NX EX 600` 访客去重，按 IP + 事件 + 文章限流，通知只在实际计数时触发。
+- 公开输入统一：新增 `lib/public-input.ts`，统一 slug（≤200，拒绝路径/URL 元字符与控制字符）、实体 id（≤64，cuid 形态）、locale、标题/描述/正文长度与日期解析；`/api/blog`、`/api/comments`、`/api/stats`、`/api/about`、`/api/image`、`/api/import` 均已接入。
+- 后台文章接口：创建时校验 slug 并处理重复（409），更新/删除校验 id、标题、描述、日期与栏目 id，避免非法值落库或拼进 GitHub 路径。
+
+### 影响范围
+
+- 公开接口：`/api/blog`、`/api/comments`、`/api/stats`、`/api/about`、`/api/image`。
+- 后台接口：`/api/upload`（管理员限定）、`/api/import`（slug 校验）、`/api/blog` 写操作。
+- 无数据库结构变更，无新增环境变量。
+
+### 验证情况
+
+- `npm test`：49/49 通过。
+- `npx tsc --noEmit`：0 error。
+- `NODE_ENV=production npm run build`：通过。
+
 ## 2026-10-17 - /api/stats 防刷与通知面收敛（REQ-202610-1010）
 
 ### 变更内容
