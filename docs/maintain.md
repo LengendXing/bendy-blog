@@ -1,5 +1,20 @@
 # 维护记录
 
+## REQ-202610-1022 - 2026-10-17
+
+### 变更内容
+
+- 删除 `lib/auth.ts` 末尾 38 行注释掉的旧 callbacks/events 实现，保留现行 NextAuth 配置。
+- 新增 `lib/auth-config.test.ts`，防止注释死代码回流并约束 callbacks/events 各只有一份。
+
+### 影响范围
+
+- 仅 `lib/auth.ts` 源码可读性；登录、会话、事件处理等运行时行为不变。
+
+### 验证情况
+
+- `npm test`、`npx tsc --noEmit`、`NODE_ENV=production npm run build` 通过。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容
