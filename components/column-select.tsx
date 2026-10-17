@@ -1,6 +1,7 @@
 "use client"
 import { useState, useRef, useEffect } from "react"
 import { ChevronDown, Pencil } from "lucide-react"
+import { isImeComposing } from "@/lib/ime"
 
 interface Props {
   columns: Array<{ id: string; name: string }>
@@ -28,6 +29,7 @@ export function ColumnSelect({ columns, value, onChange, onCreate, onUpdate, pla
   }, [])
 
   async function handleKeyDown(e: React.KeyboardEvent) {
+    if (isImeComposing(e)) return
     if (e.key === "Enter" && input.trim() && allowCreate && onCreate) {
       e.preventDefault()
       const name = input.trim()
@@ -80,7 +82,7 @@ export function ColumnSelect({ columns, value, onChange, onCreate, onUpdate, pla
                   <input
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit() }}
+                    onKeyDown={e => { if (isImeComposing(e)) return; if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit() }}
                     maxLength={6}
                     className="w-full bg-transparent font-mono text-xs focus:outline-none border-b border-pixel-black dark:border-pixel-white"
                     autoFocus
