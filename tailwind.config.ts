@@ -1,5 +1,11 @@
 import type { Config } from "tailwindcss"
 
+/**
+ * Palette values live once, as RGB channel tokens in styles/globals.css.
+ * Tailwind only maps utility names onto those tokens.
+ */
+const pixelColor = (token: string) => `rgb(var(--pixel-${token}) / <alpha-value>)`
+
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -16,18 +22,18 @@ const config: Config = {
       },
       colors: {
         pixel: {
-          black: "#0a0a0a",
-          white: "#fafafa",
+          black: pixelColor("black"),
+          white: pixelColor("white"),
           gray: {
-            100: "#f0f0f0",
-            200: "#e0e0e0",
-            300: "#c0c0c0",
-            400: "#a0a0a0",
-            500: "#808080",
-            600: "#606060",
-            700: "#404040",
-            800: "#202020",
-            900: "#141414",
+            100: pixelColor("gray-100"),
+            200: pixelColor("gray-200"),
+            300: pixelColor("gray-300"),
+            400: pixelColor("gray-400"),
+            500: pixelColor("gray-500"),
+            600: pixelColor("gray-600"),
+            700: pixelColor("gray-700"),
+            800: pixelColor("gray-800"),
+            900: pixelColor("gray-900"),
           },
         },
       },

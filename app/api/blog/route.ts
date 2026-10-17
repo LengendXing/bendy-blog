@@ -5,15 +5,14 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFileContent, getFileContent, deleteFile } from "@/lib/github"
 import { sortPostsByEffectiveDate } from "@/lib/post-order"
+import { blogListWhere } from "@/lib/blog-visibility"
 
 export async function GET(req: NextRequest) {
   const published = req.nextUrl.searchParams.get("published")
   const columnId = req.nextUrl.searchParams.get("columnId")
   const session = await getServerSession(authOptions)
   const isAdmin = Boolean((session?.user as any)?.isAdmin)
-  const where: any = { published: true }
-  if (isAdmin && published !== "true") delete where.published
-  if (columnId) where.columnId = columnId
+  const where = blogListWhere({ isAdmin, publishedOnly: published === "true", columnId })
 
   if (!isAdmin) {
     const posts = await prisma.blogPost.findMany({

@@ -3,34 +3,31 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthSessionProvider } from "@/components/session-provider"
 import { PageTransition } from "@/components/page-transition"
 import type { Metadata, Viewport } from "next"
-
-const siteUrl = "https://blog.sunchengxin.com"
-const siteTitle = "Bendy Blog"
-const siteDescription = "笨迪博客（BendyBlog）是程序员笨迪的技术博客，记录 Java、后端开发、机器学习、深度学习、算法与工程实践，分享持续成长的码农修炼笔记。"
+import { absoluteUrl, SITE_DESCRIPTION, SITE_KEYWORDS, SITE_TITLE, SITE_URL } from "@/lib/site"
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: siteTitle,
-  description: siteDescription,
-  keywords: ["笨迪博客", "BendyBlog", "码农修炼笔记", "Java", "后端开发", "机器学习", "深度学习", "算法", "程序员"],
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  keywords: [...SITE_KEYWORDS],
   authors: [{ name: "笨迪" }],
   creator: "笨迪",
-  publisher: "Bendy Blog",
+  publisher: SITE_TITLE,
   openGraph: {
     type: "website",
-    url: siteUrl,
-    siteName: "Bendy Blog",
+    url: SITE_URL,
+    siteName: SITE_TITLE,
     locale: "zh_CN",
-    title: siteTitle,
-    description: siteDescription,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary",
-    title: siteTitle,
-    description: siteDescription,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   alternates: {
-    types: { "application/rss+xml": `${siteUrl}/feed.xml` },
+    types: { "application/rss+xml": absoluteUrl("/feed.xml") },
   },
   robots: {
     index: true,
@@ -48,10 +45,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Bendy Blog",
+    name: SITE_TITLE,
     alternateName: ["笨迪博客", "BendyBlog", "码农修炼笔记"],
-    url: siteUrl,
-    description: siteDescription,
+    url: SITE_URL,
+    description: SITE_DESCRIPTION,
     inLanguage: "zh-CN",
     publisher: { "@type": "Person", name: "笨迪" },
   }

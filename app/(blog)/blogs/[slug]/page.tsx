@@ -4,9 +4,10 @@ import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { BlogContent } from "./blog-content"
 import { sortPostsByEffectiveDate } from "@/lib/post-order"
+import { absoluteUrl, SITE_TITLE, SITE_URL } from "@/lib/site"
+import { isPublishedPost, publishedPostWhere } from "@/lib/blog-visibility"
 
 export const revalidate = 60
-const siteUrl = "https://blog.sunchengxin.com"
 
 type PageParams = { params: Promise<{ slug: string }> }
 
@@ -22,7 +23,7 @@ async function getPost(slug: string) {
 async function getPostContext(post: Awaited<ReturnType<typeof getPost>>) {
   if (!post) return { previous: null, next: null, related: [] }
   const posts = await prisma.blogPost.findMany({
-    where: { published: true },
+    where: publishedPostWhere(),
     orderBy: { createdAt: "desc" },
     select: { id: true, slug: true, title: true, columnId: true, publishDate: true, createdAt: true },
   })
@@ -40,26 +41,26 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
   const { slug: rawSlug } = await params
   const slug = decodeURIComponent(rawSlug)
   const post = await getPost(slug)
-  if (!post || !post.published) return {}
+  if (!post || !isPublishedPost(post)) return {}
 
   const description = post.description?.trim() || `${post.title}，来自笨迪博客 BendyBlog 的码农修炼笔记。`
-  const url = `${siteUrl}/blogs/${encodeURIComponent(post.slug)}`
+  const url = absoluteUrl(`/blogs/${encodeURIComponent(post.slug)}`)
   return {
-    title: "Bendy Blog",
+    title: SITE_TITLE,
     description,
     keywords: ["笨迪博客", "BendyBlog", "码农修炼笔记", post.title, post.column?.name].filter(Boolean) as string[],
     alternates: { canonical: url },
     openGraph: {
       type: "article",
       url,
-      title: "Bendy Blog",
+      title: SITE_TITLE,
       description,
       publishedTime: post.publishDate?.toISOString() || post.createdAt.toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
       authors: ["笨迪"],
       section: post.column?.name,
     },
-    twitter: { card: "summary", title: "Bendy Blog", description },
+    twitter: { card: "summary", title: SITE_TITLE, description },
   }
 }
 
@@ -67,7 +68,7 @@ export default async function BlogPostPage({ params }: PageParams) {
   const { slug: rawSlug } = await params
   const slug = decodeURIComponent(rawSlug)
   const post = await getPost(slug)
-  if (!post || !post.published) notFound()
+  if (!post || !isPublishedPost(post)) notFound()
   const context = await getPostContext(post)
 
   let markdown = ""
@@ -81,9 +82,9 @@ export default async function BlogPostPage({ params }: PageParams) {
     description: post.description || undefined,
     datePublished: (post.publishDate || post.createdAt).toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    mainEntityOfPage: { "@type": "WebPage", "@id": `${siteUrl}/blogs/${encodeURIComponent(post.slug)}` },
+    mainEntityOfPage: { "@type": "WebPage", "@id": absoluteUrl(`/blogs/${encodeURIComponent(post.slug)}`) },
     author: { "@type": "Person", name: "笨迪" },
-    publisher: { "@type": "Organization", name: "笨迪博客 BendyBlog", url: siteUrl },
+    publisher: { "@type": "Organization", name: "笨迪博客 BendyBlog", url: SITE_URL },
     articleSection: post.column?.name || undefined,
     keywords: ["笨迪博客", "BendyBlog", "码农修炼笔记", post.title, post.column?.name].filter(Boolean).join(", "),
   }

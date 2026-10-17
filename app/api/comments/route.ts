@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendNotifications } from "@/lib/notify"
 import { isRateLimited } from "@/lib/rate-limit"
+import { isPublishedPost, PUBLISHED_POST_FILTER } from "@/lib/blog-visibility"
 
 export async function GET(req: NextRequest) {
   const postId = req.nextUrl.searchParams.get("postId")
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
   const comments = await prisma.comment.findMany({
     where: {
       ...(postId ? { postId } : {}),
-      ...(!isAdmin ? { post: { published: true } } : {}),
+      ...(!isAdmin ? { post: PUBLISHED_POST_FILTER } : {}),
     },
     include: {
       user: { select: { name: true, image: true, githubUsername: true } },
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
   }
 
   const post = await prisma.blogPost.findUnique({ where: { id: postId }, select: { id: true, title: true, slug: true, published: true } })
-  if (!post?.published) return NextResponse.json({ error: "post not found" }, { status: 404 })
+  if (!isPublishedPost(post)) return NextResponse.json({ error: "post not found" }, { status: 404 })
   if (parentId) {
     const parent = await prisma.comment.findFirst({ where: { id: parentId, postId }, select: { id: true } })
     if (!parent) return NextResponse.json({ error: "invalid parent" }, { status: 400 })

@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next"
-
-const siteUrl = "https://blog.sunchengxin.com"
+import { absoluteUrl, SITE_URL } from "@/lib/site"
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -9,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin/", "/api/", "/login", "/auth/"],
     },
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap: absoluteUrl("/sitemap.xml"),
+    host: SITE_URL,
   }
 }

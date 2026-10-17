@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { redis } from "@/lib/redis"
 import { sendNotifications } from "@/lib/notify"
 import { isRateLimited, requestIp } from "@/lib/rate-limit"
+import { isPublishedPost } from "@/lib/blog-visibility"
 
 export async function POST(req: NextRequest) {
   let body: any
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ views: current?.views || 0, shares: current?.shares || 0, counted: false })
   }
   const post = await prisma.blogPost.findUnique({ where: { slug } })
-  if (!post?.published) return NextResponse.json({ error: "not found" }, { status: 404 })
+  if (!isPublishedPost(post)) return NextResponse.json({ error: "not found" }, { status: 404 })
 
   const update: any = {}
   if (event === "view") update.views = { increment: 1 }

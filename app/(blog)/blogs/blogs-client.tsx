@@ -13,7 +13,6 @@ interface BlogPostSummary {
   slug: string
   title: string
   description: string | null
-  published: boolean
   publishDate: string | null
   createdAt: string
   column: { id: string; name: string } | null
@@ -75,7 +74,7 @@ export default function BlogsClient({ initialPosts, initialColumns, initialQuery
         const data = await response.json().catch(() => null)
         if (!response.ok || !Array.isArray(data)) throw new Error("blog list request failed")
         if (currentRequest === requestId.current && !controller.signal.aborted) {
-          setPosts(data.filter((post: BlogPostSummary) => post.published))
+          setPosts(data)
         }
       })
       .catch(error => {

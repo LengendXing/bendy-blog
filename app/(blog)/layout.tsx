@@ -5,6 +5,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { LocaleProvider, useLocale } from "@/components/locale-provider"
 import { Globe2, X } from "lucide-react"
 import { useEffect, useState } from "react"
+import { resolveBlogTitle } from "@/lib/blog-title"
 
 const NETWORK_NOTICE_STORAGE_KEY = "bendy-network-notice-seen"
 
@@ -33,7 +34,7 @@ function NetworkNotice() {
   return (
     <div className="pointer-events-none fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div
-        className="pixel-pop pointer-events-auto w-full max-w-md border-2 border-pixel-black bg-pixel-white p-4 text-pixel-black shadow-[8px_8px_0_#0a0a0a] dark:border-pixel-white dark:bg-pixel-black dark:text-pixel-white dark:shadow-[8px_8px_0_#fafafa]"
+        className="pixel-pop pointer-events-auto w-full max-w-md border-2 border-pixel-black bg-pixel-white p-4 text-pixel-black shadow-[8px_8px_0_currentColor] dark:border-pixel-white dark:bg-pixel-black dark:text-pixel-white"
         role="status"
         aria-live="polite"
       >
@@ -66,10 +67,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { fetch("/api/config").then(r => r.json()).then(setConfig).catch(() => {}) }, [])
 
-  const normalizedTitle = config.blogTitle?.trim().toUpperCase()
-  const blogTitle = !config.blogTitle || normalizedTitle === "BENDY BLOG" || normalizedTitle === "笨迪博客 BENDYBLOG | 码农修炼笔记" || normalizedTitle === "笨迪博客 BENDYBLOG"
-    ? "Bendy Blog"
-    : config.blogTitle
+  const blogTitle = resolveBlogTitle(config.blogTitle)
   const footerText = config.footerText || "Built with nextjs & By @SunChengXin"
 
   return (

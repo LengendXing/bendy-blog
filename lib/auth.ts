@@ -14,7 +14,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, profile }) {
+    async signIn() {
       return true
     },
     async session({ session, user }) {
@@ -70,42 +70,4 @@ export const authOptions: NextAuthOptions = {
       }
     },
   },
-  // callbacks: {
-  //  async signIn({ user, profile }) {
-  //     if (profile && (profile as any).login) {
-  //       // 延迟一下确保 user 已入库
-  //       setTimeout(async () => {
-  //         try {
-  //           await prisma.user.update({
-  //             where: { id: user.id },
-  //             data: { githubUsername: (profile as any).login },
-  //           })
-  //         } catch {}
-  //       }, 1000)
-  //     }
-  //     return true
-  //   },
-  //   async session({ session, user }) {
-  //     if (session.user) {
-  //       (session.user as any).id = user.id
-  //       const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
-  //       ;(session.user as any).githubUsername = dbUser?.githubUsername
-  //       ;(session.user as any).isAdmin = adminUsernames.includes(dbUser?.githubUsername || "")
-  //     }
-  //     return session
-  //   },
-  // },
-  // events: {
-  //   async signIn({ user, profile }) {
-  //     if (profile && (profile as any).login) {
-  //       await prisma.user.update({
-  //         where: { id: user.id },
-  //         data: { githubUsername: (profile as any).login },
-  //       })
-  //     }
-  //   },
-  // },
-  // pages: {
-  //   signIn: "/api/auth/signin",
-  // },
 }

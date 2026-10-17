@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { sortPostsByEffectiveDate } from "@/lib/post-order"
+import { absoluteUrl, SITE_TITLE } from "@/lib/site"
+import { publishedPostWhere } from "@/lib/blog-visibility"
 
-const siteUrl = "https://blog.sunchengxin.com"
 // Keep the subscription fresh while still allowing Vercel to cache it.
 export const revalidate = 300
 
@@ -26,7 +27,7 @@ export async function GET() {
 
   try {
     posts = sortPostsByEffectiveDate(await prisma.blogPost.findMany({
-      where: { published: true },
+      where: publishedPostWhere(),
       orderBy: { createdAt: "desc" },
       select: { slug: true, title: true, description: true, publishDate: true, createdAt: true, updatedAt: true },
     }))
@@ -35,14 +36,14 @@ export async function GET() {
   }
 
   const items = posts.map(post => {
-    const url = `${siteUrl}/blogs/${encodeURIComponent(post.slug)}`
+    const url = absoluteUrl(`/blogs/${encodeURIComponent(post.slug)}`)
     const date = post.publishDate || post.createdAt
     return `
       <item>
         <title>${escapeXml(post.title)}</title>
         <link>${escapeXml(url)}</link>
         <guid isPermaLink="true">${escapeXml(url)}</guid>
-        <description>${escapeXml(post.description || `${post.title} | Bendy Blog`)}</description>
+        <description>${escapeXml(post.description || `${post.title} | ${SITE_TITLE}`)}</description>
         <pubDate>${date.toUTCString()}</pubDate>
         <lastBuildDate>${post.updatedAt.toUTCString()}</lastBuildDate>
       </item>`
@@ -51,9 +52,9 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Bendy Blog</title>
-    <link>${siteUrl}/blogs</link>
-    <atom:link href="${siteUrl}/feed.xml" rel="self" type="application/rss+xml" />
+    <title>${SITE_TITLE}</title>
+    <link>${absoluteUrl("/blogs")}</link>
+    <atom:link href="${absoluteUrl("/feed.xml")}" rel="self" type="application/rss+xml" />
     <description>笨迪博客 BendyBlog 的码农修炼笔记。</description>
     <language>zh-CN</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>${items}

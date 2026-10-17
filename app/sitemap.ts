@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next"
 import { prisma } from "@/lib/prisma"
 import { sortPostsByEffectiveDate } from "@/lib/post-order"
-
-const siteUrl = "https://blog.sunchengxin.com"
+import { absoluteUrl } from "@/lib/site"
+import { publishedPostWhere } from "@/lib/blog-visibility"
 
 export const revalidate = 3600
 export const dynamic = "force-dynamic"
@@ -12,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     posts = sortPostsByEffectiveDate(await prisma.blogPost.findMany({
-      where: { published: true },
+      where: publishedPostWhere(),
       select: { slug: true, updatedAt: true, publishDate: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     }))
@@ -21,15 +21,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: `${siteUrl}/blogs`, changeFrequency: "daily", priority: 1 },
-    { url: `${siteUrl}/about`, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${siteUrl}/projects`, changeFrequency: "weekly", priority: 0.6 },
+    { url: absoluteUrl("/blogs"), changeFrequency: "daily", priority: 1 },
+    { url: absoluteUrl("/about"), changeFrequency: "monthly", priority: 0.6 },
+    { url: absoluteUrl("/projects"), changeFrequency: "weekly", priority: 0.6 },
   ]
 
   return [
     ...staticPages,
     ...posts.map(post => ({
-      url: `${siteUrl}/blogs/${encodeURIComponent(post.slug)}`,
+      url: absoluteUrl(`/blogs/${encodeURIComponent(post.slug)}`),
       lastModified: post.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.8,
