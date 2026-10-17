@@ -1,5 +1,21 @@
 # 维护记录
 
+## 2026-10-17 - REQ-202610-1024 viewport 可缩放性回归防护
+
+### 变更内容
+
+- 确认 `app/layout.tsx` 的 viewport 未设置 `maximumScale` 或 `userScalable: false`（缩放限制已在 f1d4fc1 移除），本次补充回归测试防止重新引入。
+- 新增 `lib/viewport.test.ts`，校验 `width=device-width`、`initialScale: 1` 存在，且不出现禁止缩放的配置。
+
+### 影响范围
+
+- 仅新增回归测试与维护记录；页面渲染、接口与数据结构均未改动。
+
+### 验证情况
+
+- `npm test` 7/7 通过；`npx tsc --noEmit` 0 error；`NODE_ENV=production npm run build` 成功。
+- 生产构建输出的 viewport meta 为 `width=device-width, initial-scale=1`，未包含 `maximum-scale`。
+
 ## v0.1.1 - 2026-08-31
 
 ### 变更内容
